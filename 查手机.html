@@ -531,28 +531,34 @@ function updateWallpaper() {
 function renderQQList() {
     const content = document.getElementById('app-content');
 
-    // 如果内存里没有好友，先从 localStorage 读取 qq_friends
+    // 如果内存里没有好友，先从 localStorage 读取 chat_friends (微信联系人)
     if (currentQQFriends.length === 0) {
-        const storedFriends = JSON.parse(localStorage.getItem('qq_friends') || '[]');
+        const storedFriends = JSON.parse(localStorage.getItem('chat_friends') || '[]');
         if (storedFriends.length === 0) {
             content.innerHTML = `<div style="text-align:center; margin-top:100px; color:#999;"><i class="fas fa-lock" style="font-size:40px; margin-bottom:10px;"></i><p>QQ 已加密</p><p style="font-size:12px;">点击右上角 AI 按钮破解数据</p></div>`;
             return;
         }
-        // 把 qq_friends 里的好友直接显示出来
+        // 把 chat_friends 里的好友直接显示出来，并获取微信的 lastMsg
         currentQQFriends = storedFriends.map(f => ({
             name: f.name,
-            relation: f.group || '好友'
+            relation: '微信好友',
+            persona: f.persona || '普通人',
+            lastMsg: f.lastMsg || '暂无消息'
         }));
-        // 同时从 qq_history 里读取聊天记录，用于显示最后一条消息
-        const storedHistory = JSON.parse(localStorage.getItem('qq_history') || '{}');
-        Object.keys(storedHistory).forEach(name => {
-            qqChatHistories[name] = storedHistory[name];
+        // 同时从微信聊天历史 chat_history 中读取聊天记录，将其转换为查手机可读的格式
+        const storedHistory = JSON.parse(localStorage.getItem('chat_history') || '{}');
+        storedFriends.forEach(f => {
+            const chatMsgs = storedHistory[f.id] || [];
+            qqChatHistories[f.name] = chatMsgs.map(m => ({
+                type: m.role === 'user' ? 'self' : 'friend',
+                text: m.content
+            }));
         });
     }
 
     content.innerHTML = currentQQFriends.map(f => {
         const history = qqChatHistories[f.name] || [];
-        const lastMsg = history.length > 0 ? history[history.length-1].text : "无消息";
+        const lastMsg = history.length > 0 ? history[history.length-1].text : f.lastMsg;
         return `
             <div class="qq-list-item" onclick="openQQChat('${f.name}')">
                 <div class="qq-avatar">${f.name[0]}</div>
@@ -592,16 +598,32 @@ async function sendQQMsg() {
     input.value = '';
     renderMessages();
 
-    const aiConfig = JSON.parse(localStorage.getItem('ai_config') || '{}');
-    if (!aiConfig.key) return;
+    // 升级为调用主屏幕和微信聊天共用的 API 密钥及地址
+    const apiKey = localStorage.getItem('global_api_key') || localStorage.getItem('chat_api_key') || '';
+    const apiEndpoint = localStorage.getItem('global_api_endpoint') || localStorage.getItem('chat_api_url') || '';
+    const apiModel = localStorage.getItem('global_api_model') || localStorage.getItem('chat_api_model') || 'gpt-3.5-turbo';
+    
+    if (!apiKey) return;
 
     try {
-        const friendInfo = currentQQFriends.find(f => f.name === currentChatFriend) || { relation: "朋友" };
-        const res = await fetch(`${aiConfig.url.replace(/\/$/, "")}/chat/completions`, {
-            method: 'POST', headers: { 'Authorization': `Bearer ${aiConfig.key}`, 'Content-Type': 'application/json' },
+        const friendInfo = currentQQFriends.find(f => f.name === currentChatFriend) || { relation: "微信好友", persona: "普通人" };
+        let cleanUrl = apiEndpoint.trim().replace(/\/$/, "");
+        if (cleanUrl.endsWith("/chat/completions")) {
+            cleanUrl = cleanUrl.replace(/\/chat\/completions$/, "");
+        }
+
+        const res = await fetch(`${cleanUrl}/chat/completions`, {
+            method: 'POST', 
+            headers: { 
+                'Authorization': `Bearer ${apiKey.trim()}`, 
+                'Content-Type': 'application/json' 
+            },
             body: JSON.stringify({ 
-                model: aiConfig.model || "gpt-3.5-turbo", 
-                messages: [{ role: "user", content: `你现在是机主好友[${currentChatFriend}]（关系:${friendInfo.relation}）。机主对你说：“${text}”。请口语化简短回复，不带引号。` }] 
+                model: apiModel, 
+                messages: [
+                    { role: "system", content: `你现在扮演[${currentChatFriend}]。你的人设是：${friendInfo.persona}。请以微信聊天的口吻、沉浸式地进行简单文字回复，不要带多余的系统说明。` },
+                    { role: "user", content: text }
+                ] 
             })
         });
         if (!res.ok) { console.error("QQ API Error:", res.status); return; }
@@ -618,20 +640,28 @@ async function sendQQMsg() {
 
 /* ================= 核心分析逻辑 (triggerAI) ================= */
 async function triggerAI() {
-    const aiConfig = JSON.parse(localStorage.getItem('ai_config') || '{}');
-    if (!aiConfig.key) return alert("请先在主设置中通过【主页下滑-设置】配置 API Key");
+    const apiKey = localStorage.getItem('global_api_key') || localStorage.getItem('chat_api_key') || '';
+    const apiEndpoint = localStorage.getItem('global_api_endpoint') || localStorage.getItem('chat_api_url') || '';
+    const apiModel = localStorage.getItem('global_api_model') || localStorage.getItem('chat_api_model') || 'gpt-3.5-turbo';
     
-    const targetName = localStorage.getItem('target_check_name') || "机主";
-    const friendsData = JSON.parse(localStorage.getItem('qq_friends')) || [];
-    const targetPersona = (friendsData.find(f => f.name === targetName) || { persona: "普通人" }).persona;
+    if (!apiKey) return alert("请先在主设置中通过【桌面-设置】配置 API Key");
+    
+    const targetName = localStorage.getItem('target_check_name') || "AI助手(默认)";
+    const friendsData = JSON.parse(localStorage.getItem('chat_friends') || '[]');
+    const targetFriendObj = friendsData.find(f => f.name === targetName) || { persona: "一个温柔、幽默的AI助手" };
+    const targetPersona = targetFriendObj.persona || "普通人";
     
     const btn = document.getElementById('ai-scan-btn');
     const oldBtnHtml = btn.innerHTML;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
 
     try {
-        const url = `${aiConfig.url.replace(/\/$/, "")}/chat/completions`;
-        const headers = { 'Authorization': `Bearer ${aiConfig.key}`, 'Content-Type': 'application/json' };
+        let cleanUrl = apiEndpoint.trim().replace(/\/$/, "");
+        if (cleanUrl.endsWith("/chat/completions")) {
+            cleanUrl = cleanUrl.replace(/\/chat\/completions$/, "");
+        }
+        const url = `${cleanUrl}/chat/completions`;
+        const headers = { 'Authorization': `Bearer ${apiKey.trim()}`, 'Content-Type': 'application/json' };
 
         if (currentAppId === 'qq') {
             const myInfo = JSON.parse(localStorage.getItem('my_info') || '{"name":"弥酒"}');
@@ -653,7 +683,7 @@ async function triggerAI() {
             const res = await fetch(url, {
                 method: 'POST', headers: headers,
                 body: JSON.stringify({ 
-                    model: aiConfig.model || "gpt-3.5-turbo", 
+                    model: apiModel, 
                     messages: [{ role: "user", content: sysPrompt }] 
                 })
             });
@@ -664,16 +694,16 @@ async function triggerAI() {
             currentQQFriends = [];
             qqChatHistories = {};
 
-            // 1. 强制插入【你与角色】的真实记录
-            const realHistory = JSON.parse(localStorage.getItem('qq_history') || '{}')[targetName] || [];
-            currentQQFriends.push({ name: userName, relation: "置顶联系人" });
+            // 1. 强制从微信聊天记录（chat_history）中读取我们和这个AI的真实微信记录并插入查手机
+            const wechatHistory = JSON.parse(localStorage.getItem('chat_history') || '{}');
+            const realHistory = wechatHistory[targetFriendObj.id] || [];
             
-            // 关键逻辑：视角反转
-            // 原本的 self (你) 在查手机时变成 friend (左边白球)
-            // 原本的 friend (角色) 在查手机时变成 self (右边蓝球)
+            currentQQFriends.push({ name: userName, relation: "微信置顶", persona: "机主本人" });
+            
+            // 关键视角反转：在看角色手机，所以微信中AI说的气泡(assistant)转为机主的气泡(self)；微信中你发的(user)转为(friend)
             qqChatHistories[userName] = realHistory.slice(-6).map(m => ({
-                type: m.type === 'self' ? 'friend' : 'self', 
-                text: m.text
+                type: m.role === 'user' ? 'friend' : 'self', 
+                text: m.content
             }));
 
             // 2. 解析 AI 生成的其他路人
@@ -684,7 +714,7 @@ async function triggerAI() {
                     const name = parts[0].trim();
                     const relation = parts[1].trim();
                     const msgs = parts.slice(2).join(':').split('#').filter(m => m.trim());
-                    currentQQFriends.push({ name, relation });
+                    currentQQFriends.push({ name, relation, persona: "AI虚拟路人" });
                     qqChatHistories[name] = msgs.map((text, idx) => ({
                         type: idx % 2 === 0 ? 'friend' : 'self', text: text.trim()
                     }));
@@ -694,7 +724,7 @@ async function triggerAI() {
         } else if (currentAppId === 'browser') {
             const res = await fetch(url, {
                 method: 'POST', headers: headers,
-                body: JSON.stringify({ model: aiConfig.model || "gpt-3.5-turbo", messages: [{ role: "user", content: `暴露隐私：虚构8条[${targetName}]的搜索记录。人设：${targetPersona}。格式：标题|网址|时间。用#隔开。不要代码块！` }] })
+                body: JSON.stringify({ model: apiModel, messages: [{ role: "user", content: `暴露隐私：虚构8条[${targetName}]的搜索记录。人设：${targetPersona}。格式：标题|网址|时间。用#隔开。不要代码块！` }] })
             });
             if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.error?.message || `HTTP错误 ${res.status}`); }
             const data = await res.json();
@@ -708,7 +738,7 @@ async function triggerAI() {
         } else if (currentAppId === 'shop') {
             const res = await fetch(url, {
                 method: 'POST', headers: headers,
-                body: JSON.stringify({ model: aiConfig.model || "gpt-3.5-turbo", messages: [{ role: "user", content: `虚构5个[${targetName}]的私密购物清单。格式：名|价|规格|动机。用#隔开。不要代码块！` }] })
+                body: JSON.stringify({ model: apiModel, messages: [{ role: "user", content: `虚构5个[${targetName}]的私密购物清单。格式：名|价|规格|动机。用#隔开。不要代码块！` }] })
             });
             if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.error?.message || `HTTP错误 ${res.status}`); }
             const data = await res.json();
@@ -723,7 +753,7 @@ async function triggerAI() {
             const res = await fetch(url, {
                 method: 'POST', headers: headers,
                 body: JSON.stringify({ 
-                    model: aiConfig.model || "gpt-3.5-turbo", 
+                    model: apiModel, 
                     messages: [{ role: "user", content: `写一篇非常详尽的日记。
 人设背景：${targetPersona}。
 要求：
@@ -760,7 +790,7 @@ async function triggerAI() {
         } else if (currentAppId === 'photo') {
             const res = await fetch(url, {
                 method: 'POST', headers: headers,
-                body: JSON.stringify({ model: aiConfig.model || "gpt-3.5-turbo", messages: [{ role: "user", content: `虚构6张彻底删除的照片描述。人设：${targetPersona}。格式：描述1#描述2#描述3... 不要代码块！` }] })
+                body: JSON.stringify({ model: apiModel, messages: [{ role: "user", content: `虚构6张彻底删除的照片描述。人设：${targetPersona}。格式：描述1#描述2#描述3... 不要代码块！` }] })
             });
             if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.error?.message || `HTTP错误 ${res.status}`); }
             const data = await res.json();
@@ -772,7 +802,7 @@ async function triggerAI() {
             const res = await fetch(url, {
                 method: 'POST', headers: headers,
                 body: JSON.stringify({ 
-                    model: aiConfig.model || "gpt-3.5-turbo", 
+                    model: apiModel, 
                     messages: [{ role: "user", content: `虚构机主[${targetName}]的流水。人设：${targetPersona}。
 请按照以下特殊分隔符输出，严禁任何代码块：
 总余额 >>> 项目一 @@@ 金额一 @@@ 时间一 @@@ 内心想法一 ### 项目二 @@@ 金额二 @@@ 时间二 @@@ 内心想法二 ...
@@ -884,12 +914,24 @@ function saveCurrentDiary() {
     alert("已收藏");
 }
 async function refreshMood() {
-    const aiConfig = JSON.parse(localStorage.getItem('ai_config') || '{}'); if(!aiConfig.key) return;
+    const apiKey = localStorage.getItem('global_api_key') || localStorage.getItem('chat_api_key') || '';
+    const apiEndpoint = localStorage.getItem('global_api_endpoint') || localStorage.getItem('chat_api_url') || '';
+    const apiModel = localStorage.getItem('global_api_model') || localStorage.getItem('chat_api_model') || 'gpt-3.5-turbo';
+    
+    if (!apiKey) return;
     try {
-        const res = await fetch(`${aiConfig.url.replace(/\/$/, "")}/chat/completions`, {
-            method: 'POST', headers: { 'Authorization': `Bearer ${aiConfig.key}`, 'Content-Type': 'application/json' },
+        let cleanUrl = apiEndpoint.trim().replace(/\/$/, "");
+        if (cleanUrl.endsWith("/chat/completions")) {
+            cleanUrl = cleanUrl.replace(/\/chat\/completions$/, "");
+        }
+        const res = await fetch(`${cleanUrl}/chat/completions`, {
+            method: 'POST', 
+            headers: { 
+                'Authorization': `Bearer ${apiKey.trim()}`, 
+                'Content-Type': 'application/json' 
+            },
             body: JSON.stringify({ 
-                model: aiConfig.model || "gpt-3.5-turbo", 
+                model: apiModel, 
                 messages: [{ role: "user", content: "俏皮吐槽查手机行为，20字以内。" }] 
             })
         });
