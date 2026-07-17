@@ -210,8 +210,11 @@
                 <div class="text-4xl font-light tracking-tight">{{ currentTime }}</div>
                 <div class="text-xs opacity-90 mt-1 font-medium">{{ currentDate }}</div>
             </div>
-            <!-- Row 2: 左侧图标 电话 -->
-            <div class="app-icon"><div class="icon-box"></div><span class="icon-label">电话</span></div>
+            <!-- Row 2: 左侧图标 论坛 -->
+<div class="app-icon" @click="openForumPage">
+    <div class="icon-box" style="background-color: #ff8200; display: flex; align-items: center; justify-content: center; font-size: 28px;">📣</div>
+    <span class="icon-label">论坛</span>
+</div>
 <!-- Row2 聊天图标：点击跳转聊天页面 -->
 <div class="app-icon" @click="openChatPage">
     <div class="icon-box" style="background-color: #34C759; display: flex; align-items: center; justify-content: center; font-size: 28px;">💬</div>
@@ -731,6 +734,10 @@
 const openChatPage = () => {
     window.location.href = '聊天.html';
 };
+// 打开 论坛 页面
+const openForumPage = () => {
+    window.location.href = '论坛.html';
+};
 // 打开 小红书 页面
 const openXhsPage = () => {
     window.location.href = '小红书.html';
@@ -1025,19 +1032,20 @@ ${timePrompt}
                 });
             };
 
-            return {
-    // 桌面页面
-    currentView,
-    currentTime,
-    currentDate,
-    apiConfig,
-    saveHomeConfig,
-    openChatPage,
-    openXhsPage,
-    openZilvPage,
-    openNiudanPage,
-    openChashoujiPage,
-    backToHome,
+        return {
+// 桌面页面
+currentView,
+currentTime,
+currentDate,
+apiConfig,
+saveHomeConfig,
+openChatPage,
+openForumPage,
+openXhsPage,
+openZilvPage,
+openNiudanPage,
+openChashoujiPage,
+backToHome,
 
                 // 聊天页面全部变量&方法
                 activeTab, chatCurrentView, activeFriend, activeTabName,
