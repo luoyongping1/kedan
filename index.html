@@ -697,6 +697,39 @@
     const { createApp, ref, computed, nextTick, watch } = Vue;
     createApp({
         setup() {
+            // ========== Service Worker 注册 & 后台通知保活逻辑 ==========
+            // 申请浏览器系统通知权限
+            if ('Notification' in window && Notification.permission === 'default') {
+                Notification.requestPermission();
+            }
+
+            // 发送系统通知方法
+            const sendNotification = (title, body) => {
+                if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+                    navigator.serviceWorker.controller.postMessage({
+                        type: 'SHOW_NOTIFICATION',
+                        title: title,
+                        body: body
+                    });
+                }
+            };
+
+            // 注册 SW 并启动 15 秒间隔的保活心跳 PING 包
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('sw.js')
+                    .then(reg => {
+                        console.log('[SW] 注册成功:', reg);
+                        setInterval(() => {
+                            if (navigator.serviceWorker.controller) {
+                                navigator.serviceWorker.controller.postMessage({ type: 'PING' });
+                            }
+                        }, 15000);
+                    })
+                    .catch(err => {
+                        console.error('[SW] 注册失败:', err);
+                    });
+            }
+
             // ========== 桌面主页全局视图控制 ==========
             const currentView = ref('home'); // home / settings / chat
             // 桌面时钟日期
@@ -730,34 +763,34 @@
                 currentView.value = 'home';
             };
 
-// 打开 聊天 页面
-const openChatPage = () => {
-    window.location.href = '聊天.html';
-};
-// 打开 论坛 页面
-const openForumPage = () => {
-    window.location.href = '论坛.html';
-};
-// 打开 购物 页面
-const openShoppingPage = () => {
-    window.location.href = '购物.html';
-};
-// 打开 小红书 页面
-const openXhsPage = () => {
-    window.location.href = '小红书.html';
-};
-// 打开 自律打卡 页面
-const openZilvPage = () => {
-    window.location.href = '自律.html';
-};
-// 打开 梦幻扭蛋 页面
-const openNiudanPage = () => {
-    window.location.href = '扭蛋机.html';
-};
-// 打开 查手机 页面
-const openChashoujiPage = () => {
-    window.location.href = '查手机.html';
-};
+            // 打开 聊天 页面
+            const openChatPage = () => {
+                window.location.href = '聊天.html';
+            };
+            // 打开 论坛 页面
+            const openForumPage = () => {
+                window.location.href = '论坛.html';
+            };
+            // 打开 购物 页面
+            const openShoppingPage = () => {
+                window.location.href = '购物.html';
+            };
+            // 打开 小红书 页面
+            const openXhsPage = () => {
+                window.location.href = '小红书.html';
+            };
+            // 打开 自律打卡 页面
+            const openZilvPage = () => {
+                window.location.href = '自律.html';
+            };
+            // 打开 梦幻扭蛋 页面
+            const openNiudanPage = () => {
+                window.location.href = '扭蛋机.html';
+            };
+            // 打开 查手机 页面
+            const openChashoujiPage = () => {
+                window.location.href = '查手机.html';
+            };
             // 返回手机桌面
             const backToHome = () => {
                 currentView.value = 'home';
@@ -955,6 +988,11 @@ ${timePrompt}
                     chatHistory.value[fId].pop(); 
                     chatHistory.value[fId].push({ role: 'assistant', type: 'text', content: reply });
                     
+                    // 【当系统处于后台或非当前聊天界面时触发系统弹窗】
+                    if (document.hidden || currentView.value !== 'chat' || activeFriend.value?.id !== fId) {
+                        sendNotification(activeFriend.value?.name || '新消息', reply);
+                    }
+
                     if (activeFriend.value.allowEmoji && emojis.value.length > 0 && Math.random() < 0.5) {
                         const randomEmoji = emojis.value[Math.floor(Math.random() * emojis.value.length)];
                         chatHistory.value[fId].push({ role: 'assistant', type: 'emoji', content: randomEmoji.url });
