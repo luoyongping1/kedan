@@ -354,9 +354,13 @@
         let wallet = 100.00;
         const ballColors = ['#ffb7c5', '#c3f0ca', '#bae1ff', '#ffffba', '#e2ceff', '#ffd3b6'];
 
-        // 获取主页面保存的 AI 配置和好友列表
-        const aiConfig = JSON.parse(localStorage.getItem('ai_config') || '{}');
-        const qqFriends = JSON.parse(localStorage.getItem('qq_friends')) || [{ name: "系统小助手", prompt: "一个温柔的向导" }];
+               // 获取主页面保存的 AI 配置（支持主页和聊天页的API设置）和好友列表
+        const apiEndpoint = localStorage.getItem('global_api_endpoint') || localStorage.getItem('chat_api_url') || '';
+        const apiKey = localStorage.getItem('global_api_key') || localStorage.getItem('chat_api_key') || '';
+        const apiModel = localStorage.getItem('global_api_model') || localStorage.getItem('chat_api_model') || '';
+
+        // 获取聊天页面中保存的好友列表数据，如果为空则使用默认系统小助手
+        const qqFriends = JSON.parse(localStorage.getItem('chat_friends')) || [{ name: "系统小助手", persona: "一个温柔的向导" }];
 
         // 你要求的 AI 核心提示词
         const SYSTEM_PROMPT_TEMPLATE = `请严格遵循这个人设的性格、语气、说话习惯、口头禅、身份背景，绝对不能OOC。
@@ -370,18 +374,23 @@
 
         // 真正的 AI 调用函数
         async function getAiResponse(charName, charPrompt) {
-            if (!aiConfig.url || !aiConfig.key) {
+            if (!apiEndpoint || !apiKey) {
                 return "（提示：请先在主页面『设置』中配置 API URL 和 Key，否则无法生成 AI 对话哦！）";
             }
             try {
-                const response = await fetch(`${aiConfig.url}/chat/completions`, {
+                // 清理可能多余的斜杠
+                let cleanUrl = apiEndpoint.trim().replace(/\/$/, "");
+                if (cleanUrl.endsWith("/chat/completions")) {
+                    cleanUrl = cleanUrl.replace(/\/chat\/completions$/, "");
+                }
+                const response = await fetch(`${cleanUrl}/chat/completions`, {
                     method: 'POST',
                     headers: {
-                        'Authorization': `Bearer ${aiConfig.key}`,
+                        'Authorization': `Bearer ${apiKey.trim()}`,
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        model: aiConfig.model,
+                        model: apiModel,
                         messages: [
                             { role: "system", content: `${SYSTEM_PROMPT_TEMPLATE}\n\n你现在的人设是：${charName}。背景设定：${charPrompt}` },
                             { role: "user", content: "请给我写一张小纸条，说说你现在的“小纠结”或者“悄悄话”，字数在50字以上。" }
@@ -456,8 +465,8 @@
                 <div class="note-content">💖 ${char.name} 正在认真书写中...</div>
             </div>`;
 
-            // 4. 调用 AI 获取内容
-            const aiText = await getAiResponse(char.name, char.prompt || "你的好朋友");
+            // 4. 调用 AI 获取内容（将原本的 char.prompt 改为 char.persona，以便匹配聊天页的人设字段）
+            const aiText = await getAiResponse(char.name, char.persona || "你的好朋友");
 
             // 5. 渲染最终的小纸条
             let footerText = styleNum === 1 ? `来自你的好友：${char.name}` : 
