@@ -251,11 +251,11 @@
             </div>
 <!-- Row 6: 底部 5 列图标行 -->
 <div class="five-col-row">
-    <!-- 第1个App -->
-    <div class="app-icon">
-        <div class="icon-box"></div>
-        <span class="icon-label">App 1</span>
-    </div>
+<!-- 第1个App -->
+<div class="app-icon" @click="openShoppingPage">
+    <div class="icon-box" style="background-color: #ff9500; display: flex; align-items: center; justify-content: center; font-size: 28px;">🛒</div>
+    <span class="icon-label">购物</span>
+</div>
     <!-- 第2个App修改为设置 -->
     <div @click="currentView = 'settings'" class="app-icon">
         <div class="icon-box" style="background-color: #8E8E93; display: flex; align-items: center; justify-content: center; font-size: 28px;">⚙️</div>
@@ -730,13 +730,17 @@
                 currentView.value = 'home';
             };
 
-            // 打开 聊天 页面
+// 打开 聊天 页面
 const openChatPage = () => {
     window.location.href = '聊天.html';
 };
 // 打开 论坛 页面
 const openForumPage = () => {
     window.location.href = '论坛.html';
+};
+// 打开 购物 页面
+const openShoppingPage = () => {
+    window.location.href = '购物.html';
 };
 // 打开 小红书 页面
 const openXhsPage = () => {
@@ -1041,6 +1045,7 @@ apiConfig,
 saveHomeConfig,
 openChatPage,
 openForumPage,
+openShoppingPage,
 openXhsPage,
 openZilvPage,
 openNiudanPage,
