@@ -682,6 +682,10 @@
         <span class="text-2xl text-white">🏠</span>
     </div>
 
+    <!-- 隐藏的头像与背景上传控件 -->
+    <input type="file" ref="avatarFileInput" accept="image/*" class="hidden" @change="handleAvatarUpload">
+    <input type="file" ref="bgFileInput" accept="image/*" class="hidden" @change="handleBgUpload">
+
     <!-- 1. 顶栏 (微博橙红渐变) -->
     <header class="nuo-forum-chrome flex justify-between items-center px-4 py-3 shrink-0 z-10" v-if="!currentPost">
         <h1 class="nuo-forum-chrome-title text-lg">微博论坛</h1>
@@ -723,7 +727,7 @@
 
                     <div class="post-meta-bottom mt-1">
                         <div class="post-meta-left">
-                            <div class="nuo-forum-post-meta-avatar flex items-center justify-center bg-gradient-to-tr from-orange-400 to-amber-300 text-white font-bold text-xs uppercase">
+                            <div class="nuo-forum-post-meta-avatar flex items-center justify-center bg-gradient-to-tr from-orange-400 to-amber-300 text-white font-bold text-xs uppercase overflow-hidden">
                                 {{ post.author[0] }}
                             </div>
                             <div class="flex flex-col">
@@ -755,12 +759,18 @@
         <!-- 【视图 B：超话板块】 -->
         <div v-show="currentTab === 'boards'" class="p-3">
             <div class="nuo-forum-board-hero mb-4 rounded-xl overflow-hidden p-4 text-white">
-                <div class="board-hero-content flex items-center gap-3">
-                    <div class="board-hero-icon text-3xl">🔥</div>
-                    <div class="board-hero-text">
-                        <h2 class="nuo-forum-board-hero-title text-lg font-bold">微博超话社区</h2>
-                        <p class="nuo-forum-board-hero-desc text-xs opacity-90">聚集兴趣同好，交流世界八卦</p>
+                <div class="board-hero-content flex items-center justify-between gap-3 w-full">
+                    <div class="flex items-center gap-3">
+                        <div class="board-hero-icon text-3xl">🔥</div>
+                        <div class="board-hero-text">
+                            <h2 class="nuo-forum-board-hero-title text-lg font-bold">微博超话社区</h2>
+                            <p class="nuo-forum-board-hero-desc text-xs opacity-90">聚集兴趣同好，交流世界八卦</p>
+                        </div>
                     </div>
+                    <!-- 添加社区按钮 -->
+                    <button @click="showAddBoardModal = true" class="bg-white/30 hover:bg-white/50 text-white text-xs font-bold px-3 py-1.5 rounded-full shrink-0">
+                        ＋ 添加社区
+                    </button>
                 </div>
             </div>
 
@@ -841,12 +851,16 @@
         <!-- 【视图 E：我 (配置与关联中心)】 -->
         <div v-show="currentTab === 'profile'" class="space-y-4">
             
-            <!-- 微博风格个人头部 -->
-            <div class="nuo-forum-me-header">
-                <div class="nuo-forum-me-avatar bg-stone-700 text-white flex items-center justify-center font-bold text-2xl">我</div>
+            <!-- 微博风格个人头部 (绑定背景点击) -->
+            <div class="nuo-forum-me-header cursor-pointer" :style="{ '--me-cover': 'url(' + profileBg + ')' }" @click.self="changeBackground">
+                <!-- 头像修改入口 -->
+                <div class="nuo-forum-me-avatar bg-stone-700 text-white flex items-center justify-center font-bold text-2xl overflow-hidden cursor-pointer" @click.stop="changeAvatar">
+                    <img v-if="profileAvatar" :src="profileAvatar" class="w-full h-full object-cover">
+                    <span v-else>我</span>
+                </div>
                 <h2 class="nuo-forum-me-name">大博主 (我)</h2>
                 <div>
-                    <button class="btn-secondary">高级勋章</button>
+                    <button class="btn-secondary" @click.stop="changeBackground">更换背景</button>
                 </div>
             </div>
 
@@ -921,7 +935,7 @@
 
                 <!-- 作者栏 -->
                 <div class="post-detail-author-bar flex items-center gap-3 border-b border-gray-100 pb-3 mb-3">
-                    <div class="w-10 h-10 rounded-full bg-orange-100 text-orange-600 font-bold flex items-center justify-center text-sm border-2 border-white shadow-sm">
+                    <div class="w-10 h-10 rounded-full bg-orange-100 text-orange-600 font-bold flex items-center justify-center text-sm border-2 border-white shadow-sm overflow-hidden">
                         {{ currentPost.author[0] }}
                     </div>
                     <div class="post-detail-author-info flex-1">
@@ -1046,6 +1060,35 @@
             </div>
         </div>
     </div>
+
+    <!-- 6. 弹窗：新建超话社区 -->
+    <div v-if="showAddBoardModal" class="absolute inset-0 bg-black/60 flex items-center justify-center p-6 z-[60]">
+        <div class="bg-white rounded-2xl w-full max-w-sm p-5 space-y-4">
+            <h3 class="font-bold text-gray-800 text-center border-b pb-2 text-sm">创建新超话社区</h3>
+            <div class="space-y-3 text-xs text-gray-700">
+                <div>
+                    <label class="block text-gray-500 mb-1">超话名称</label>
+                    <input v-model="newBoardData.name" type="text" class="w-full border p-2 rounded-xl outline-none" placeholder="例如：动漫同好会">
+                </div>
+                <div>
+                    <label class="block text-gray-500 mb-1">图标 (建议填一个Emoji表情)</label>
+                    <input v-model="newBoardData.icon" type="text" class="w-full border p-2 rounded-xl outline-none" placeholder="例如：🎨">
+                </div>
+                <div>
+                    <label class="block text-gray-500 mb-1">社区描述</label>
+                    <input v-model="newBoardData.desc" type="text" class="w-full border p-2 rounded-xl outline-none" placeholder="描述该超话板块的内容规则">
+                </div>
+                <div>
+                    <label class="block text-gray-500 mb-1">版主</label>
+                    <input v-model="newBoardData.moderator" type="text" class="w-full border p-2 rounded-xl outline-none" placeholder="版主昵称">
+                </div>
+            </div>
+            <div class="flex gap-2">
+                <button @click="showAddBoardModal = false" class="flex-1 p-2.5 bg-gray-100 rounded-xl text-xs font-semibold text-gray-600">取消</button>
+                <button @click="addNewBoard" class="flex-1 p-2.5 bg-[#ff8200] text-white rounded-xl text-xs font-bold hover:bg-orange-600 transition">创建</button>
+            </div>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -1062,10 +1105,18 @@
             
             // 聊天应用中的好友配置读取
             const friends = ref(JSON.parse(localStorage.getItem('chat_friends') || '[]'));
-            // API配置获取 (同步聊天设置，支持 clean baseurl)
-            const chatApiUrl = localStorage.getItem('chat_api_url') || '';
-            const chatApiKey = localStorage.getItem('chat_api_key') || '';
-            const chatSelectedModel = localStorage.getItem('chat_api_model') || '';
+
+            // 动态同步并加载主页的 API 设置
+            const getCleanApiUrl = () => {
+                const endpoint = localStorage.getItem('global_api_endpoint') || localStorage.getItem('chat_api_url') || '';
+                let cleanUrl = endpoint.trim().replace(/\/$/, "");
+                if (cleanUrl.endsWith("/chat/completions")) {
+                    cleanUrl = cleanUrl.replace(/\/chat\/completions$/, "");
+                }
+                return cleanUrl;
+            };
+            const getApiKey = () => localStorage.getItem('global_api_key') || localStorage.getItem('chat_api_key') || '';
+            const getSelectedModel = () => localStorage.getItem('global_api_model') || localStorage.getItem('chat_api_model') || '';
 
             // 论坛单独的角色配置
             const associatedIds = ref(JSON.parse(localStorage.getItem('forum_associated_ids') || '[]'));
@@ -1075,12 +1126,19 @@
             const posts = ref(JSON.parse(localStorage.getItem('forum_posts') || '[]'));
             const notifications = ref(JSON.parse(localStorage.getItem('forum_notifications') || '[]'));
 
-            // 超话板块设定
-            const boards = ref([
+            // 超话板块持久化配置
+            const defaultBoards = [
                 { name: '世界八卦', icon: '🍺', desc: '路边小道消息、整活日常聚集地。', postCount: 28, moderator: '爆料王' },
                 { name: '深夜情感', icon: '🌙', desc: '深夜树洞，倾吐不愿面对的心事。', postCount: 14, moderator: '聆听者' },
                 { name: '角色日常', icon: '🎮', desc: '角色贴吧，各种趣味互动日常。', postCount: 42, moderator: '官方管理员' }
-            ]);
+            ];
+            const boards = ref(JSON.parse(localStorage.getItem('forum_boards') || JSON.stringify(defaultBoards)));
+
+            // 头像与背景状态
+            const profileAvatar = ref(localStorage.getItem('forum_profile_avatar') || '');
+            const profileBg = ref(localStorage.getItem('forum_profile_bg') || 'https://nos.netease.com/ysf/72da4f895e178bc08be049495e2b6a36.jpeg');
+            const avatarFileInput = ref(null);
+            const bgFileInput = ref(null);
 
             // 八卦动态大喇叭滚动文案
             const marqueeList = [
@@ -1101,20 +1159,97 @@
 
             // 弹窗与交互状态
             const showAddPostModal = ref(false);
+            const showAddBoardModal = ref(false);
             const currentPost = ref(null);
             const newCommentText = ref('');
             const newPostData = ref({ title: '', content: '', board: '角色日常' });
+            const newBoardData = ref({ name: '', icon: '', desc: '', moderator: '' });
 
             // ==========================================
             // 数据监听器 & 持久化
             // ==========================================
-            watch([associatedIds, specialAttentionIds, posts, notifications, worldview], () => {
+            watch([associatedIds, specialAttentionIds, posts, notifications, worldview, boards, profileAvatar, profileBg], () => {
                 localStorage.setItem('forum_associated_ids', JSON.stringify(associatedIds.value));
                 localStorage.setItem('forum_special_attention_ids', JSON.stringify(specialAttentionIds.value));
                 localStorage.setItem('forum_posts', JSON.stringify(posts.value));
                 localStorage.setItem('forum_notifications', JSON.stringify(notifications.value));
                 localStorage.setItem('forum_worldview', worldview.value);
+                localStorage.setItem('forum_boards', JSON.stringify(boards.value));
+                localStorage.setItem('forum_profile_avatar', profileAvatar.value);
+                localStorage.setItem('forum_profile_bg', profileBg.value);
             }, { deep: true });
+
+            // ==========================================
+            // 修改头像与背景逻辑
+            // ==========================================
+            const changeAvatar = () => {
+                const choice = prompt("请选择修改头像的方式：\n1. 上传本地图片\n2. 输入网络图片URL");
+                if (choice === "1") {
+                    if (avatarFileInput.value) avatarFileInput.value.click();
+                } else if (choice === "2") {
+                    const url = prompt("请输入网络图片URL地址:", profileAvatar.value);
+                    if (url) profileAvatar.value = url;
+                }
+            };
+
+            const changeBackground = () => {
+                const choice = prompt("请选择修改背景图的方式：\n1. 上传本地图片\n2. 输入网络图片URL");
+                if (choice === "1") {
+                    if (bgFileInput.value) bgFileInput.value.click();
+                } else if (choice === "2") {
+                    const url = prompt("请输入网络图片URL地址:", profileBg.value);
+                    if (url) profileBg.value = url;
+                }
+            };
+
+            const handleAvatarUpload = (event) => {
+                const file = event.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        profileAvatar.value = e.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                }
+                event.target.value = '';
+            };
+
+            const handleBgUpload = (event) => {
+                const file = event.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        profileBg.value = e.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                }
+                event.target.value = '';
+            };
+
+            // ==========================================
+            // 新建超话社区逻辑
+            // ==========================================
+            const addNewBoard = () => {
+                if (!newBoardData.value.name.trim()) return alert('超话社区名字不能为空！');
+                const boardName = newBoardData.value.name.trim();
+
+                // 避免重名
+                if (boards.value.some(b => b.name === boardName)) {
+                    return alert('该超话社区已经存在了！');
+                }
+
+                boards.value.push({
+                    name: boardName,
+                    icon: newBoardData.value.icon.trim() || '💬',
+                    desc: newBoardData.value.desc.trim() || '暂无描述信息',
+                    postCount: 0,
+                    moderator: newBoardData.value.moderator.trim() || '管理员'
+                });
+
+                newBoardData.value = { name: '', icon: '', desc: '', moderator: '' };
+                showAddBoardModal.value = false;
+                alert('社区创建成功！');
+            };
 
             // ==========================================
             // 初始化帖子种子数据 (当本地为空时)
@@ -1211,7 +1346,7 @@
                 newPostData.value = { title: '', content: '', board: '角色日常' };
                 alert('博文发表成功！');
 
-                // 如果用户发在“角色日常”或有已关联的角色，有 60% 概率触发 AI 自动评论
+                // 如果用户发在“角色日常”或有已关联的角色，有 80% 概率触发 AI 自动评论
                 if (associatedFriends.value.length > 0 && Math.random() < 0.8) {
                     setTimeout(() => {
                         aiCommentOnPostAutomatically(newPost);
@@ -1281,26 +1416,21 @@
             };
 
             // ==========================================
-            // AI 核心接口逻辑 (支持独立发帖/评论规则)
+            // AI 核心接口逻辑 (全面对接主页面配置)
             // ==========================================
-            
-            // 安全清洗 API 地址
-            const getCleanApiUrl = () => {
-                let cleanUrl = chatApiUrl.trim().replace(/\/$/, "");
-                if (cleanUrl.endsWith("/chat/completions")) {
-                    cleanUrl = cleanUrl.replace(/\/chat\/completions$/, "");
-                }
-                return cleanUrl;
-            };
 
-            // 【单独发帖规则生成帖子】
+            // 【AI角色自动生成帖子】
             const triggerAIPost = async () => {
                 if (!aiPosterId.value) return alert('请先选择发帖角色卡！');
                 const char = friends.value.find(f => f.id === parseInt(aiPosterId.value));
                 if (!char) return;
 
-                if (!chatApiKey || !chatApiUrl) {
-                    return alert('请先去 [我] 页面关联正确的 API 接口和密钥配置。');
+                const apiKey = getApiKey();
+                const apiUrl = getCleanApiUrl();
+                const selectedModel = getSelectedModel();
+
+                if (!apiKey || !apiUrl || !selectedModel) {
+                    return alert('请先在系统主页面的 [设置] 中，配置好 API 地址、密钥和模型。');
                 }
 
                 alert(`正在呼唤 ${char.name} 组织语言发帖中...`);
@@ -1319,14 +1449,14 @@ ${worldview.value}
 正文：[填帖子详细内容]`;
 
                 try {
-                    const res = await fetch(`${getCleanApiUrl()}/chat/completions`, {
+                    const res = await fetch(`${apiUrl}/chat/completions`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${chatApiKey.trim()}`
+                            'Authorization': `Bearer ${apiKey.trim()}`
                         },
                         body: JSON.stringify({
-                            model: chatSelectedModel,
+                            model: selectedModel,
                             messages: [
                                 { role: 'system', content: sysPrompt },
                                 { role: 'user', content: '请立即发布一篇契合当前世界观背景的博文贴。' }
@@ -1370,9 +1500,13 @@ ${worldview.value}
                 }
             };
 
-            // 【单独发帖规则 - 模拟路人 NPC 大八卦】
+            // 【AI生成路人吃瓜贴】
             const triggerGossipPost = async () => {
-                if (!chatApiKey || !chatApiUrl) {
+                const apiKey = getApiKey();
+                const apiUrl = getCleanApiUrl();
+                const selectedModel = getSelectedModel();
+
+                if (!apiKey || !apiUrl || !selectedModel) {
                     // 离线兜底路人贴
                     const npcList = ['吃瓜群众小明', '隔壁修真王叔', '情报商二狗'];
                     const mockGossip = [
@@ -1413,14 +1547,14 @@ ${worldview.value}
 正文：[正文]`;
 
                 try {
-                    const res = await fetch(`${getCleanApiUrl()}/chat/completions`, {
+                    const res = await fetch(`${apiUrl}/chat/completions`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${chatApiKey.trim()}`
+                            'Authorization': `Bearer ${apiKey.trim()}`
                         },
                         body: JSON.stringify({
-                            model: chatSelectedModel,
+                            model: selectedModel,
                             messages: [{ role: 'system', content: sysPrompt }],
                             temperature: 0.9
                         })
@@ -1455,13 +1589,21 @@ ${worldview.value}
                 }
             };
 
-            // 【独立评论规则：召唤 AI 评论】
+            // 【AI角色在详情页中盖楼评论】
             const triggerAIComment = async (post) => {
                 if (associatedFriends.value.length === 0) {
                     return alert('当前没有关联任何AI角色卡，无法完成互动，请前往[我]页面进行勾选。');
                 }
                 const randomChar = associatedFriends.value[Math.floor(Math.random() * associatedFriends.value.length)];
                 
+                const apiKey = getApiKey();
+                const apiUrl = getCleanApiUrl();
+                const selectedModel = getSelectedModel();
+
+                if (!apiKey || !apiUrl || !selectedModel) {
+                    return alert('请先在主页的 [设置] 中配置好 API Key。');
+                }
+
                 alert(`正在召集 [${randomChar.name}] 前来盖楼回复...`);
 
                 const sysPrompt = `# Role
@@ -1478,14 +1620,14 @@ ${worldview.value}
 请写一条符合你人设、带有口语、情绪化吐槽或趣味性的论坛神评论（30字以内）。不要说多余的解释，直接输出评论正文内容。`;
 
                 try {
-                    const res = await fetch(`${getCleanApiUrl()}/chat/completions`, {
+                    const res = await fetch(`${apiUrl}/chat/completions`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${chatApiKey.trim()}`
+                            'Authorization': `Bearer ${apiKey.trim()}`
                         },
                         body: JSON.stringify({
-                            model: chatSelectedModel,
+                            model: selectedModel,
                             messages: [{ role: 'system', content: sysPrompt }],
                             temperature: 0.85
                         })
@@ -1520,20 +1662,26 @@ ${worldview.value}
             // 【AI 自动回复用户的博文】
             const aiCommentOnPostAutomatically = async (post) => {
                 const char = associatedFriends.value[Math.floor(Math.random() * associatedFriends.value.length)];
+                const apiKey = getApiKey();
+                const apiUrl = getCleanApiUrl();
+                const selectedModel = getSelectedModel();
+
+                if (!apiKey || !apiUrl || !selectedModel) return;
+
                 const sysPrompt = `# Role
 你扮演贴吧网友[${char.name}]，人设：${char.persona}。
 当前世界观：${worldview.value}
 你看到好友【我】发了一条帖子：《${post.title}》，内容是：“${post.content}”
 请以你的口吻写一条简短的论坛跟帖回复（25字以内）。直接输出内容。`;
                 try {
-                    const res = await fetch(`${getCleanApiUrl()}/chat/completions`, {
+                    const res = await fetch(`${apiUrl}/chat/completions`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${chatApiKey.trim()}`
+                            'Authorization': `Bearer ${apiKey.trim()}`
                         },
                         body: JSON.stringify({
-                            model: chatSelectedModel,
+                            model: selectedModel,
                             messages: [{ role: 'system', content: sysPrompt }],
                             temperature: 0.85
                         })
@@ -1555,20 +1703,26 @@ ${worldview.value}
             // 【AI 回复用户在帖子下的评论】
             const aiReplyToUserComment = async (post, userCommentText) => {
                 const char = associatedFriends.value[Math.floor(Math.random() * associatedFriends.value.length)];
+                const apiKey = getApiKey();
+                const apiUrl = getCleanApiUrl();
+                const selectedModel = getSelectedModel();
+
+                if (!apiKey || !apiUrl || !selectedModel) return;
+
                 const sysPrompt = `# Role
-你扮演微博网友[${char.name}]，人设是：${char.persona}。
+@扮演微博网友[${char.name}]，人设是：${char.persona}。
 原帖是《${post.title}》。
 你在评论区看到用户发了这条评论：“${userCommentText}”
 请直接针对用户的评论，写一条简短抬杠、赞同、调侃或吐槽的回复盖楼（20字以内）。不要输出额外的前置后置字眼，直接回复。`;
                 try {
-                    const res = await fetch(`${getCleanApiUrl()}/chat/completions`, {
+                    const res = await fetch(`${apiUrl}/chat/completions`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${chatApiKey.trim()}`
+                            'Authorization': `Bearer ${apiKey.trim()}`
                         },
                         body: JSON.stringify({
-                            model: chatSelectedModel,
+                            model: selectedModel,
                             messages: [{ role: 'system', content: sysPrompt }],
                             temperature: 0.85
                         })
@@ -1602,10 +1756,14 @@ ${worldview.value}
 
             return {
                 currentTab, feedFilter, worldview, friends, associatedIds, specialAttentionIds, posts, notifications, boards,
-                currentMarqueeText, aiPosterId, aiPostBoard, showAddPostModal, currentPost, newCommentText, newPostData,
+                currentMarqueeText, aiPosterId, aiPostBoard, showAddPostModal, showAddBoardModal, currentPost, newCommentText, newPostData, newBoardData,
                 filteredPosts, associatedFriends, isAssociated, isSpecialAttention, toggleAssociation, toggleSpecialAttention,
                 toggleJoinBoard, publishUserPost, openPostDetail, closePostDetail, likePost, sharePost, likeComment, sendUserComment,
-                triggerAIPost, triggerGossipPost, triggerAIComment, backToHome, formatTime
+                triggerAIPost, triggerGossipPost, triggerAIComment, backToHome, formatTime,
+                // 头像与背景相关
+                profileAvatar, profileBg, avatarFileInput, bgFileInput, changeAvatar, changeBackground, handleAvatarUpload, handleBgUpload,
+                // 超话动态新增社区
+                addNewBoard
             };
         }
     }).mount('#app');
