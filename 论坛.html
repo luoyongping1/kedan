@@ -873,10 +873,31 @@
 
             <!-- 世界观核心绑定配置面板 -->
             <section class="bg-white p-4 mx-3 rounded-2xl shadow-sm border border-gray-100 space-y-4">
-                <h3 class="font-bold border-b pb-2 text-stone-700 text-sm">🌌 论坛世界观大设定</h3>
-                <div class="space-y-2 text-xs">
-                    <p class="text-gray-400">设置当前论坛对应的世界观与背景设定，AI 将基于此背景发表帖子和评论。</p>
-                    <textarea v-model="worldview" rows="3" class="w-full border p-2.5 rounded-xl outline-none focus:border-orange-500 bg-gray-50" placeholder="例如：某魔法学院的校园贴吧，大家平时用论坛吐槽魔法理论或暗恋八卦..."></textarea>
+                <h3 class="font-bold border-b pb-2 text-stone-700 text-sm">🌌 论坛世界观绑定设定</h3>
+                <div class="space-y-3 text-xs">
+                    <p class="text-gray-400">在此自由切换关联任意角色的任意世界观背景，系统发帖与回复将实时符合此背景。</p>
+                    
+                    <div class="space-y-2">
+                        <div>
+                            <label class="block text-gray-500 mb-1 font-semibold">1. 关联角色</label>
+                            <select v-model="selectedForumCharId" class="w-full border p-2 rounded-xl bg-gray-50 outline-none focus:border-orange-500">
+                                <option value="">-- 选择角色 --</option>
+                                <option v-for="f in friends" :key="f.id" :value="f.id">{{ f.name }}</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-gray-500 mb-1 font-semibold">2. 关联其世界观</label>
+                            <select v-model="selectedForumWorldviewId" class="w-full border p-2 rounded-xl bg-gray-50 outline-none focus:border-orange-500">
+                                <option value="">-- 选择其拥有的世界观 --</option>
+                                <option v-for="w in worldviews" :key="w.id" :value="w.id">{{ w.name }}</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="bg-orange-50 p-2.5 rounded-xl border border-orange-100 text-orange-700 mt-2">
+                        <strong class="block">当前正在生效的背景设定：</strong>
+                        <p class="mt-1 whitespace-pre-wrap leading-relaxed max-h-40 overflow-y-auto font-medium">{{ activeWorldviewContent }}</p>
+                    </div>
                 </div>
             </section>
 
@@ -1101,7 +1122,17 @@
             // ==========================================
             const currentTab = ref('feed');
             const feedFilter = ref('all'); // all (全部) | attention (特关) | gossip (八卦)
-            const worldview = ref(localStorage.getItem('forum_worldview') || '这是一个现代架空大都市，各种二次元角色和平相处，时常在贴吧互动吐槽。');
+            
+            // 新增：读取聊天应用保存的世界观列表与选择状态
+            const worldviews = ref(JSON.parse(localStorage.getItem('chat_worldviews') || '[]'));
+            const selectedForumCharId = ref(localStorage.getItem('forum_selected_char_id') || '');
+            const selectedForumWorldviewId = ref(localStorage.getItem('forum_selected_worldview_id') || '');
+
+            // 根据选中的世界观 ID，动态提取当前在论坛生效的背景内容
+            const activeWorldviewContent = computed(() => {
+                const wv = worldviews.value.find(w => w.id === parseInt(selectedForumWorldviewId.value));
+                return wv ? wv.content : '这是一个现代架空大都市，各种二次元角色和平相处，时常在贴吧互动吐槽。';
+            });
             
             // 聊天应用中的好友配置读取
             const friends = ref(JSON.parse(localStorage.getItem('chat_friends') || '[]'));
@@ -1168,12 +1199,13 @@
             // ==========================================
             // 数据监听器 & 持久化
             // ==========================================
-            watch([associatedIds, specialAttentionIds, posts, notifications, worldview, boards, profileAvatar, profileBg], () => {
+            watch([associatedIds, specialAttentionIds, posts, notifications, selectedForumCharId, selectedForumWorldviewId, boards, profileAvatar, profileBg], () => {
                 localStorage.setItem('forum_associated_ids', JSON.stringify(associatedIds.value));
                 localStorage.setItem('forum_special_attention_ids', JSON.stringify(specialAttentionIds.value));
                 localStorage.setItem('forum_posts', JSON.stringify(posts.value));
                 localStorage.setItem('forum_notifications', JSON.stringify(notifications.value));
-                localStorage.setItem('forum_worldview', worldview.value);
+                localStorage.setItem('forum_selected_char_id', selectedForumCharId.value);
+                localStorage.setItem('forum_selected_worldview_id', selectedForumWorldviewId.value);
                 localStorage.setItem('forum_boards', JSON.stringify(boards.value));
                 localStorage.setItem('forum_profile_avatar', profileAvatar.value);
                 localStorage.setItem('forum_profile_bg', profileBg.value);
@@ -1439,7 +1471,7 @@
 你现在扮演微博论坛（贴吧）用户[${char.name}]。
 你的性格设定：${char.persona || '普通人'}
 当前论坛所在的世界观与背景设定：
-${worldview.value}
+${activeWorldviewContent.value}
 
 # 论坛发帖输出规则 (重点)
 1. 你要发表一个符合上述【世界观】以及符合你【性格人设】的论坛帖子。
@@ -1539,7 +1571,7 @@ ${worldview.value}
                 alert(`正在智能编造世界上发生的奇闻轶事...`);
                 const sysPrompt = `# Role
 你现在扮演一位生活在设定世界下的匿名吃瓜网友。
-当前世界观：${worldview.value}
+当前世界观：${activeWorldviewContent.value}
 # 任务
 请写一篇带有“捕风捉影”、“吃瓜群众”、“震惊”口吻的世界八卦爆料贴。标题要吸引人，内容要结合世界观产生趣味感。
 按以下格式输出，不要有额外内容：
@@ -1610,7 +1642,7 @@ ${worldview.value}
 你现在化身为贴吧（微博）网友[${randomChar.name}]。
 你的人设背景是：${randomChar.persona || '普通人'}
 当前论坛所在的世界观与背景设定：
-${worldview.value}
+${activeWorldviewContent.value}
 
 # 任务
 当前帖子标题为：《${post.title}》
@@ -1670,7 +1702,7 @@ ${worldview.value}
 
                 const sysPrompt = `# Role
 你扮演贴吧网友[${char.name}]，人设：${char.persona}。
-当前世界观：${worldview.value}
+当前世界观：${activeWorldviewContent.value}
 你看到好友【我】发了一条帖子：《${post.title}》，内容是：“${post.content}”
 请以你的口吻写一条简短的论坛跟帖回复（25字以内）。直接输出内容。`;
                 try {
@@ -1755,7 +1787,7 @@ ${worldview.value}
             };
 
             return {
-                currentTab, feedFilter, worldview, friends, associatedIds, specialAttentionIds, posts, notifications, boards,
+                currentTab, feedFilter, worldviews, selectedForumCharId, selectedForumWorldviewId, activeWorldviewContent, friends, associatedIds, specialAttentionIds, posts, notifications, boards,
                 currentMarqueeText, aiPosterId, aiPostBoard, showAddPostModal, showAddBoardModal, currentPost, newCommentText, newPostData, newBoardData,
                 filteredPosts, associatedFriends, isAssociated, isSpecialAttention, toggleAssociation, toggleSpecialAttention,
                 toggleJoinBoard, publishUserPost, openPostDetail, closePostDetail, likePost, sharePost, likeComment, sendUserComment,
