@@ -6,7 +6,7 @@
     <title>聊天室</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
-    <script src="https://unpkg.com/@supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
     .safe-area-bottom { padding-bottom: env(safe-area-inset-bottom); }
     .hide-scrollbar::-webkit-scrollbar { display: none; }
@@ -137,7 +137,7 @@
             </div>
             <h1 class="text-base font-bold truncate px-2">零钱</h1>
             <div class="flex items-center justify-end min-w-[60px]">
-                <button @click="currentView = 'wallet-history'" class="text-xs bg-stone-800 text-white px-2.5 py-1.5 rounded-full hover:bg-stone-900 transition">零钱明细</button>
+                <button @click="currentView === 'wallet-history'" class="text-xs bg-stone-800 text-white px-2.5 py-1.5 rounded-full hover:bg-stone-900 transition">零钱明细</button>
             </div>
         </header>
 
@@ -1015,9 +1015,13 @@
                 // 初始化 Supabase
                 const SUPABASE_URL = "https://lrwkhgtuzydcvrhvnk.supabase.co";
                 const SUPABASE_ANON_KEY = "sb_publishable_VYGa1vdhr1B5VjgGKC7_5g_fGaPMq4";
+                
+                let supabaseClient = null;
                 const getSupabase = () => {
+                    if (supabaseClient) return supabaseClient;
                     if (window.supabase) {
-                        return window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                        supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                        return supabaseClient;
                     }
                     return null;
                 };

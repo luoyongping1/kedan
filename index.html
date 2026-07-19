@@ -7,7 +7,7 @@
     <title>客单小手机</title>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase-js@2"></script>
     <style>
         /* 全局基础设置 */
         * {
@@ -710,12 +710,16 @@
     const { createApp, ref, computed, nextTick, watch } = Vue;
     createApp({
         setup() {
-            // 初始化 Supabase 变量 (通过 getSupabase 动态获取，防止未加载完成前报错崩溃)
+            // 初始化 Supabase
             const SUPABASE_URL = "https://lrwkhgtuzydcvrhvnk.supabase.co";
             const SUPABASE_ANON_KEY = "sb_publishable_VYGa1vdhr1B5VjgGKC7_5g_fGaPMq4";
+            
+            let supabaseClient = null;
             const getSupabase = () => {
+                if (supabaseClient) return supabaseClient;
                 if (window.supabase) {
-                    return window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                    return supabaseClient;
                 }
                 return null;
             };
