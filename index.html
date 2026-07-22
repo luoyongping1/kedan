@@ -394,9 +394,9 @@
                     <input type="checkbox" v-model="bgKeepAlive" class="w-6 h-6 accent-blue-600">
                 </div>
                 <div class="flex items-center justify-between text-sm">
-                    <span class="text-gray-300">后台弹窗通知</span>
-                    <input type="checkbox" v-model="bgNotification" class="w-6 h-6 accent-blue-600">
-                </div>
+    <span class="text-gray-300">后台弹窗通知</span>
+    <input type="checkbox" v-model="bgNotification" @change="handleNotificationChange" class="w-6 h-6 accent-blue-600">
+</div>
             </section>
             
             <button @click="currentView = 'home'" class="w-full bg-white/10 hover:bg-white/20 text-white border border-white/20 p-3 rounded-2xl font-bold transition text-center">返回桌面</button>
@@ -1035,20 +1035,39 @@ watch([friends, chatHistory, emojis, presets, apiConfig], () => {
     localStorage.setItem('global_api_model', apiConfig.value.selectedModel);
 }, { deep: true });
 
-// 监听通知开关：当用户在设置里打开弹窗通知时，立刻向浏览器申请权限
-watch(bgNotification, (newVal) => {
-    if (newVal && 'Notification' in window) {
+// 手动触发申请权限函数，避免被浏览器静默拦截
+const handleNotificationChange = () => {
+    if (bgNotification.value) {
+        if (!('Notification' in window)) {
+            alert('您的浏览器不支持通知弹窗功能！');
+            bgNotification.value = false;
+            return;
+        }
+
+        // 如果用户以前在浏览器里点过拒绝，必须引导用户去地址栏左侧手动解禁
+        if (Notification.permission === 'denied') {
+            alert('Edge浏览器已永久禁止此站点的通知弹窗。\n\n请点击浏览器顶部地址栏最左侧的“🔒 (锁)”图标，将“通知”修改为“允许”，然后刷新网页重新开启！');
+            bgNotification.value = false;
+            localStorage.setItem('sys_bg_notification', 'false');
+            return;
+        }
+
+        // 进行权限申请
         Notification.requestPermission().then(permission => {
             if (permission !== 'granted') {
-                alert('您拒绝了通知权限，后台弹窗将运作失败。请在浏览器地址栏的设置中允许此网站发送通知。');
+                alert('授权失败！请点击浏览器地址栏左侧的“🔒 (锁)”图标并允许通知。');
                 bgNotification.value = false;
                 localStorage.setItem('sys_bg_notification', 'false');
             } else {
                 localStorage.setItem('sys_bg_notification', 'true');
+                // 成功授权后，发送一条测试推送
+                sendNotification('通知测试', '后台弹窗已成功启用！');
             }
         });
+    } else {
+        localStorage.setItem('sys_bg_notification', 'false');
     }
-});
+};
 
 // Tab切换
             const switchTab = (tab) => {
@@ -1298,9 +1317,10 @@ ${timePrompt}
                 verifyActivationCode,
                 loginAsAdmin,
                 generateNewCode,
-                bgKeepAlive,
-                bgNotification,
-                currentView,
+bgKeepAlive,
+bgNotification,
+handleNotificationChange,
+currentView,
                 currentTime,
                 currentDate,
                 apiConfig,
