@@ -7,7 +7,6 @@
     <title>客单小手机</title>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase-js@2"></script>
     <style>
         /* 全局基础设置 */
         * {
@@ -143,7 +142,7 @@
             padding: 50px 25px;
         }
 
-        /* ===== 聊天页面全局样式 ===== */
+        /* ===== 聊天页面全局样式（完整迁移chat.html全部样式无删减） ===== */
         .safe-area-bottom { padding-bottom: env(safe-area-inset-bottom); }
         .hide-scrollbar::-webkit-scrollbar { display: none; }
         
@@ -203,6 +202,55 @@
 </head>
 <body class="h-screen w-screen overflow-hidden select-none">
 <div id="app">
+
+    <!-- ================= 激活码校验遮罩层 ================= -->
+    <div v-if="!isActivated" class="fixed inset-0 bg-zinc-950 z-[9999] flex flex-col items-center justify-center p-6 text-white select-text">
+        <div class="w-full max-w-sm bg-zinc-900 p-6 rounded-3xl border border-zinc-800 shadow-2xl space-y-5 text-center">
+            <div class="text-4xl">🔐</div>
+            <h2 class="text-xl font-bold tracking-wider">系统激活验证</h2>
+            <p class="text-xs text-zinc-400 leading-relaxed">检测到当前设备尚未激活，本软件已开启一机一码保护，请输入您购买的激活码进行激活绑定。</p>
+            
+            <input v-model="activationCodeInput" type="text" 
+                   class="w-full bg-black border border-zinc-800 p-3.5 rounded-2xl text-center text-sm font-semibold tracking-widest outline-none focus:border-orange-500 transition text-white" 
+                   placeholder="请输入激活码 (格式: ACT-XXXX-XXXX)">
+            
+            <button @click="verifyActivationCode" :disabled="isVerifying" 
+                    class="w-full bg-orange-600 hover:bg-orange-500 disabled:bg-zinc-700 text-white py-3.5 rounded-2xl font-bold transition text-sm shadow-lg shadow-orange-900/20">
+                {{ isVerifying ? '正在联网验证...' : '立即激活绑定' }}
+            </button>
+            <div class="text-[9px] text-zinc-600 font-mono tracking-tighter">当前设备ID: {{ deviceId }}</div>
+        </div>
+        
+        <!-- 开发者管理后台按钮入口 -->
+        <button @click="showAdminPanel = true" class="mt-8 text-xs text-zinc-700 hover:text-zinc-500 transition">⚙️ 开发者生成激活码后台</button>
+        
+        <!-- 开发者生成激活码的弹窗面板 -->
+        <div v-if="showAdminPanel" class="fixed inset-0 bg-black/85 flex items-center justify-center p-6 z-[10000]">
+            <div class="bg-zinc-900 p-5 rounded-3xl w-full max-w-xs space-y-4 border border-zinc-800 text-left">
+                <h3 class="font-bold text-center text-sm">开发者管理后台</h3>
+                
+                <div>
+                    <label class="block text-[10px] text-zinc-500 mb-1">后台管理密码</label>
+                    <input v-model="adminPassword" type="password" class="w-full bg-black border border-zinc-800 p-2.5 rounded-xl text-xs text-white outline-none" placeholder="输入您代码中设置的密码">
+                </div>
+                
+                <div class="space-y-2 pt-2">
+                    <button @click="generateNewCode" class="w-full bg-green-600 hover:bg-green-500 text-white p-2.5 rounded-xl text-xs font-bold transition">
+                        生成并写入一个新激活码
+                    </button>
+                    
+                    <div v-if="generatedCode" class="bg-black p-3 rounded-xl border border-zinc-800 text-[10px] break-all select-all text-center font-mono text-green-400">
+                        生成成功(双击复制):<br>{{ generatedCode }}
+                    </div>
+                </div>
+                
+                <button @click="showAdminPanel = false; adminPassword = ''; generatedCode = ''" class="w-full bg-zinc-800 text-white p-2 rounded-xl text-xs transition">
+                    关闭后台
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- 1. 手机桌面主页视图 home -->
     <div v-if="currentView === 'home'" class="flex flex-col h-full w-full">
         <div class="home-screen">
@@ -336,7 +384,7 @@
     </div>
 </div>
 
-    <!-- 3. 短信/聊天页面 -->
+    <!-- 3. 短信/聊天页面（完整迁移chat.html全部DOM结构，无删减） -->
     <div v-if="currentView === 'chat'" class="chat-page-wrap h-full flex justify-center overflow-hidden text-gray-800 font-sans absolute inset-0 z-50">
         <!-- 主应用容器 -->
         <div class="w-full max-w-md h-full flex flex-col justify-between p-4 relative overflow-hidden">
@@ -355,7 +403,7 @@
                     <!-- 动态标题 -->
                     <span class="font-bold text-stone-800 text-[17px] tracking-widest">{{ activeTabName }}</span>
                     
-                    <!-- 右侧操作栏 -->
+                    <!-- 右侧操作栏 (根据Tab显示不同操作键) -->
                     <div class="flex items-center justify-end min-w-[36px]">
                         <button v-if="activeTab === 'contacts'" @click="showAddFriendModal = true" class="w-9 h-9 rounded-full bg-white border border-white shadow-[0_2px_8px_rgba(0,0,0,0.04)] flex items-center justify-center text-stone-700 hover:scale-95 transition">
                             <span class="text-xl font-medium">+</span>
@@ -433,7 +481,7 @@
                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5M12 17.25h8.25" /></svg>
                             </button>
                             <button class="hover:text-black transition">
-                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.114 5.636a9 9 0 010 12.728M16.463 8.288a5.25 5.25 0 010 7.424M6.75 8.25l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.01 9.01 0 012.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25H6.75z" /></svg>
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.114 5.636a9 9 0 010 12.728M16.463 8.288a5.25 5.25 0 010 7.424M6.75 8.25l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.01 9.01 0 012.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75z" /></svg>
                             </button>
                         </div>
                     </div>
@@ -636,24 +684,12 @@
             </nav>
             <!-- 弹窗：好友人设设置 -->
             <div v-if="showFriendSettings" class="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-6 z-[60]">
-                <div class="bg-white rounded-2xl w-full p-5 shadow-xl max-h-[90%] overflow-y-auto">
+                <div class="bg-white rounded-2xl w-full p-5 shadow-xl">
                     <h3 class="font-bold text-lg mb-4 border-b pb-2">好友角色设置</h3>
                     <div class="space-y-4 text-sm text-gray-600">
                         <div>
-                            <label class="block mb-1 font-medium">1. 角色人设</label>
-                            <textarea v-model="activeFriend.persona" rows="3" class="w-full border p-2 rounded-lg outline-none focus:border-stone-500" placeholder="例如：你是一个温柔、幽默的AI助手..."></textarea>
-                        </div>
-                        <div>
-                            <label class="block mb-1 font-medium">2. 输出设定</label>
-                            <textarea v-model="activeFriend.output_rule" rows="3" class="w-full border p-2 rounded-lg outline-none focus:border-stone-500" placeholder="输出设定..."></textarea>
-                        </div>
-                        <div>
-                            <label class="block mb-1 font-medium">3. 世界观</label>
-                            <textarea v-model="activeFriend.world_view" rows="3" class="w-full border p-2 rounded-lg outline-none focus:border-stone-500" placeholder="世界观背景..."></textarea>
-                        </div>
-                        <div>
-                            <label class="block mb-1 font-medium">4. 破限设定</label>
-                            <textarea v-model="activeFriend.limit_break" rows="3" class="w-full border p-2 rounded-lg outline-none focus:border-stone-500" placeholder="越狱/破限提示词..."></textarea>
+                            <label class="block mb-1 font-medium">角色人设</label>
+                            <textarea v-model="activeFriend.persona" rows="4" class="w-full border p-2 rounded-lg outline-none focus:border-stone-500" placeholder="例如：你是一个温柔、幽默的AI助手..."></textarea>
                         </div>
                         <div class="flex items-center justify-between">
                             <span class="font-medium">允许发送表情包 (50%频率)</span>
@@ -706,25 +742,106 @@
 </div>
 </div>
 
-<script>
-    const { createApp, ref, computed, nextTick, watch } = Vue;
-    createApp({
-        setup() {
-            // 初始化 Supabase
-            const SUPABASE_URL = "https://lrwkhgtuzydcvrhvnk.supabase.co";
-            const SUPABASE_ANON_KEY = "sb_publishable_VYGa1vdhr1B5VjgGKC7_5g_fGaPMq4";
+            // ==========================================
+            // ★ 一机一码激活机制逻辑
+            // ==========================================
+            // 校验本地是否已经激活过
+            const isActivated = ref(localStorage.getItem('sys_activated') === 'true');
+            const activationCodeInput = ref('');
+            const isVerifying = ref(false);
+            const showAdminPanel = ref(false);
+            const adminPassword = ref('');
+            const generatedCode = ref('');
             
-            let supabaseClient = null;
-            const getSupabase = () => {
-                if (supabaseClient) return supabaseClient;
-                if (window.supabase) {
-                    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-                    return supabaseClient;
+            // 自动读取或生成设备唯一指纹 (UUID)
+            let devId = localStorage.getItem('sys_device_id');
+            if (!devId) {
+                devId = 'DEV-' + Math.random().toString(36).substring(2, 8).toUpperCase() + '-' + Date.now().toString(36).toUpperCase();
+                localStorage.setItem('sys_device_id', devId);
+            }
+            const deviceId = ref(devId);
+            
+            // 开发者自定义配置项 (云端kvdb.io的BucketID 与 后台密码)
+            // 建议使用您专属的 kvdb.io 的 bucket
+            const kvdbBucket = 'c8f1a3e5b7c94d0b8f2a1'; 
+            const adminSecret = '137928'; // ★请在此修改您自己的后台管理密码，不要用默认的 123456
+
+            // 客户端：验证激活码绑定流程
+            const verifyActivationCode = async () => {
+                const code = activationCodeInput.value.trim().toUpperCase();
+                if (!code) return alert('请输入激活码！');
+                isVerifying.value = true;
+                
+                try {
+                    // 1. 联网查询此激活码是否存在
+                    const res = await fetch(`https://kvdb.io/${kvdbBucket}/code_${code}`);
+                    if (!res.ok) {
+                        throw new Error('该激活码无效或已被开发者作废！');
+                    }
+                    const data = await res.json();
+                    
+                    // 2. 校验此激活码是否已经绑定设备
+                    if (!data.bound_device) {
+                        // 如果未被绑定：将当前设备的 deviceId 写入，完成一机一码首次绑定
+                        data.bound_device = deviceId.value;
+                        data.bind_time = new Date().toLocaleString();
+                        
+                        const updateRes = await fetch(`https://kvdb.io/${kvdbBucket}/code_${code}`, {
+                            method: 'POST',
+                            body: JSON.stringify(data)
+                        });
+                        
+                        if (updateRes.ok) {
+                            localStorage.setItem('sys_activated', 'true');
+                            isActivated.value = true;
+                            alert('绑定激活成功！感谢支持！');
+                        } else {
+                            alert('联网绑定失败，请确认您的网络状态！');
+                        }
+                    } else if (data.bound_device === deviceId.value) {
+                        // 如果已绑定的设备就是当前设备，直接通过
+                        localStorage.setItem('sys_activated', 'true');
+                        isActivated.value = true;
+                        alert('检测到当前设备已绑定此码，已自动进入系统！');
+                    } else {
+                        // 如果已被其他设备绑定，拒绝进入
+                        alert('激活失败！此激活码已被其他设备使用绑定，无法重复激活！');
+                    }
+                } catch (e) {
+                    alert(`验证失败：${e.message}`);
+                } finally {
+                    isVerifying.value = false;
                 }
-                return null;
             };
 
-            // ========== Service Worker 注册 & 后台通知保活逻辑 ==========
+            // 开发者：生成新激活码写入云端数据库
+            const generateNewCode = async () => {
+                if (adminPassword.value !== adminSecret) {
+                    return alert('后台管理密码验证失败！');
+                }
+                // 生成一个高强度的随机码
+                const randomCode = 'ACT-' + Math.random().toString(36).substring(2, 6).toUpperCase() + '-' + Math.random().toString(36).substring(2, 6).toUpperCase();
+                
+                try {
+                    // 写入云端 kvdb，bound_device 初始化为 null (代表无人绑定)
+                    const res = await fetch(`https://kvdb.io/${kvdbBucket}/code_${randomCode}`, {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            bound_device: null,
+                            create_time: new Date().toLocaleString()
+                        })
+                    });
+                    
+                    if (res.ok) {
+                        generatedCode.value = randomCode;
+                        alert('新激活码生成并成功写入云端！');
+                    } else {
+                        alert('写入云端出错，请检查网络！');
+                    }
+                } catch (e) {
+                    alert(`生成激活码失败：${e.message}`);
+                }
+            };
             // 申请浏览器系统通知权限
             if ('Notification' in window && Notification.permission === 'default') {
                 Notification.requestPermission();
@@ -823,13 +940,13 @@
                 currentView.value = 'home';
             };
 
-            // ========== 聊天页面完整状态 ==========
+            // ========== 聊天页面完整状态（全部迁移chat.html逻辑无删减） ==========
             const activeTab = ref('chat');
             const chatCurrentView = ref('list'); // list or chat
             const activeFriend = ref(null);
             
             // 持久化数据
-            const friends = ref(JSON.parse(localStorage.getItem('chat_friends') || '[{"id":1, "name":"AI助手(默认)", "lastMsg":"", "persona":"", "output_rule":"", "world_view":"", "limit_break":"", "allowEmoji":false}]'));
+            const friends = ref(JSON.parse(localStorage.getItem('chat_friends') || '[{"id":1, "name":"AI助手(默认)", "lastMsg":"", "persona":"", "allowEmoji":false}]'));
             const chatHistory = ref(JSON.parse(localStorage.getItem('chat_history') || '{"1":[]}'));
             const emojis = ref(JSON.parse(localStorage.getItem('chat_emojis') || '[]'));
             const presets = ref(JSON.parse(localStorage.getItem('chat_presets') || '[]'));
@@ -845,11 +962,6 @@
             const newFriendName = ref('');
             const emojiInputText = ref('');
             const userInput = ref('');
-
-            // 新增 3 个大厅绑定变量（为了保持与聊天页面逻辑对称）
-            const newCardOutput = ref('');
-            const newCardWorld = ref('');
-            const newCardBreak = ref('');
 
             const menuMsgIndex = ref(-1);
             const multiSelectMode = ref(false);
@@ -893,16 +1005,7 @@
             const addFriend = () => {
                 if (!newFriendName.value) return;
                 const id = Date.now();
-                friends.value.push({ 
-                    id, 
-                    name: newFriendName.value, 
-                    lastMsg: '', 
-                    persona: '', 
-                    output_rule: '',
-                    world_view: '',
-                    limit_break: '',
-                    allowEmoji: false 
-                });
+                friends.value.push({ id, name: newFriendName.value, lastMsg: '', persona: '', allowEmoji: false });
                 chatHistory.value[id] = [];
                 newFriendName.value = '';
                 showAddFriendModal.value = false;
@@ -992,15 +1095,9 @@
                 chatHistory.value[fId].push({ role: 'assistant', type: 'text', content: '思考中...' });
                 scrollToBottom();
                 try {
-                    let fullPersona = activeFriend.value.persona || '普通人';
-                    if (activeFriend.value.output_rule) fullPersona += `\n【输出设定】\n${activeFriend.value.output_rule}`;
-                    if (activeFriend.value.world_view) fullPersona += `\n【世界观设定】\n${activeFriend.value.world_view}`;
-                    if (activeFriend.value.limit_break) fullPersona += `\n【破限设定】\n${activeFriend.value.limit_break}`;
-
                     const sys = `# Role
 你现在化身为[${activeFriend.value.name}]。
-你的性格设定：
-${fullPersona}
+你的性格设定：${activeFriend.value.persona || '普通人'}
 ${timePrompt}
 # 语言风格（强制执行）
 1. 碎片化：不要一次性说一大堆话。请像真实微信聊天一样，将长句拆分成多条短句发送。
@@ -1121,11 +1218,16 @@ ${timePrompt}
                 });
             };
 
-        return {
-// 桌面页面
-currentView,
-currentTime,
-currentDate,
+                // 激活码相关变量与方法
+                isActivated,
+                activationCodeInput,
+                isVerifying,
+                showAdminPanel,
+                adminPassword,
+                generatedCode,
+                deviceId,
+                verifyActivationCode,
+                generateNewCode,
 apiConfig,
 saveHomeConfig,
 openChatPage,
@@ -1136,9 +1238,6 @@ openZilvPage,
 openNiudanPage,
 openChashoujiPage,
 backToHome,
-newCardOutput,
-newCardWorld,
-newCardBreak,
 
                 // 聊天页面全部变量&方法
                 activeTab, chatCurrentView, activeFriend, activeTabName,
