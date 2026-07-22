@@ -248,15 +248,15 @@
                 <div class="text-xs opacity-90 mt-1 font-medium">{{ currentDate }}</div>
             </div>
             <!-- Row 2: 左侧图标 论坛 -->
-<div class="app-icon" @click="openForumPage">
-    <div class="icon-box" style="background-color: #ff8200; display: flex; align-items: center; justify-content: center; font-size: 28px;">📣</div>
-    <span class="icon-label">论坛</span>
-</div>
-<!-- Row2 聊天图标：点击跳转聊天页面 -->
-<div class="app-icon" @click="openChatPage">
-    <div class="icon-box" style="background-color: #34C759; display: flex; align-items: center; justify-content: center; font-size: 28px;">💬</div>
-    <span class="icon-label">聊天</span>
-</div>
+            <div class="app-icon" @click="openForumPage">
+                <div class="icon-box" style="background-color: #ff8200; display: flex; align-items: center; justify-content: center; font-size: 28px;">📣</div>
+                <span class="icon-label">论坛</span>
+            </div>
+            <!-- Row2 聊天图标：点击跳转聊天页面 -->
+            <div class="app-icon" @click="openChatPage">
+                <div class="icon-box" style="background-color: #34C759; display: flex; align-items: center; justify-content: center; font-size: 28px;">💬</div>
+                <span class="icon-label">聊天</span>
+            </div>
             
             <!-- 右侧纵向组件 (2x3) -->
             <div class="vertical-widget widget-base">
@@ -286,38 +286,38 @@
                 <div class="icon-box" style="background-color: #1296db; display: flex; align-items: center; justify-content: center; font-size: 28px;">🔍</div>
                 <span class="icon-label">查手机</span>
             </div>
-<!-- Row 6: 底部 5 列图标行 -->
-<div class="five-col-row">
-<!-- 第1个App -->
-<div class="app-icon" @click="openShoppingPage">
-    <div class="icon-box" style="background-color: #ff9500; display: flex; align-items: center; justify-content: center; font-size: 28px;">🛒</div>
-    <span class="icon-label">购物</span>
-</div>
-    <!-- 第2个App修改为设置 -->
-    <div @click="currentView = 'settings'" class="app-icon">
-        <div class="icon-box" style="background-color: #8E8E93; display: flex; align-items: center; justify-content: center; font-size: 28px;">⚙️</div>
-        <span class="icon-label">设置</span>
-    </div>
-    <!-- 第3个App (只有通过管理员密码登录时才显示) -->
-    <div v-if="isAdminSession" class="app-icon" @click="currentView = 'admin-activation'">
-        <div class="icon-box" style="background-color: #8b5cf6; display: flex; align-items: center; justify-content: center; font-size: 28px;">🔑</div>
-        <span class="icon-label">生成激活码</span>
-    </div>
-    <div v-else class="app-icon">
-        <div class="icon-box"></div>
-        <span class="icon-label">App 3</span>
-    </div>
-    <!-- 第4个App -->
-    <div class="app-icon">
-        <div class="icon-box"></div>
-        <span class="icon-label">App 4</span>
-    </div>
-    <!-- 第5个App -->
-    <div class="app-icon">
-        <div class="icon-box"></div>
-        <span class="icon-label">App 5</span>
-    </div>
-</div>
+            <!-- Row 6: 底部 5 列图标行 -->
+            <div class="five-col-row">
+                <!-- 第1个App -->
+                <div class="app-icon" @click="openShoppingPage">
+                    <div class="icon-box" style="background-color: #ff9500; display: flex; align-items: center; justify-content: center; font-size: 28px;">🛒</div>
+                    <span class="icon-label">购物</span>
+                </div>
+                <!-- 第2个App修改为设置 -->
+                <div @click="currentView = 'settings'" class="app-icon">
+                    <div class="icon-box" style="background-color: #8E8E93; display: flex; align-items: center; justify-content: center; font-size: 28px;">⚙️</div>
+                    <span class="icon-label">设置</span>
+                </div>
+                <!-- 第3个App (只有通过管理员密码登录时才显示) -->
+                <div v-if="isAdminSession" class="app-icon" @click="currentView = 'admin-activation'">
+                    <div class="icon-box" style="background-color: #8b5cf6; display: flex; align-items: center; justify-content: center; font-size: 28px;">🔑</div>
+                    <span class="icon-label">生成激活码</span>
+                </div>
+                <div v-else class="app-icon">
+                    <div class="icon-box"></div>
+                    <span class="icon-label">App 3</span>
+                </div>
+                <!-- 第4个App -->
+                <div class="app-icon">
+                    <div class="icon-box"></div>
+                    <span class="icon-label">App 4</span>
+                </div>
+                <!-- 第5个App -->
+                <div class="app-icon">
+                    <div class="icon-box"></div>
+                    <span class="icon-label">App 5</span>
+                </div>
+            </div>
         </div>
         <!-- 分页点 -->
         <div class="pagination">
@@ -341,40 +341,40 @@
     </div>
 
     <!-- 2. API 设置页面 -->
-<div v-if="currentView === 'settings'" class="settings-view flex flex-col justify-start">
-    <div class="flex items-center justify-between mb-8">
-        <h2 class="text-2xl font-bold text-white tracking-wider">系统设置</h2>
-        <button @click="saveHomeConfig" class="text-sm bg-blue-600 text-white px-4 py-2 rounded-full hover:bg-blue-500 transition">保存配置</button>
-    </div>
-    
-    <div class="space-y-6 overflow-y-auto max-h-[80vh] pr-1">
-        <!-- API 设置面板 -->
-        <section class="bg-white/10 p-5 rounded-3xl border border-white/20 shadow-md">
-            <h3 class="font-bold border-b border-white/10 pb-2 mb-4 text-white text-base">API 设置</h3>
-            <div class="space-y-4 text-sm">
-                <div>
-                    <label class="block text-gray-300 mb-1">API 地址 (Endpoint)</label>
-                    <input v-model="apiConfig.endpoint" type="text" class="w-full bg-black/45 border border-white/20 p-2.5 rounded-xl text-white outline-none focus:border-blue-500 transition" placeholder="https://api.openai.com/v1">
-                </div>
-                <div>
-                    <label class="block text-gray-300 mb-1">API 密钥 (Key)</label>
-                    <input v-model="apiConfig.apiKey" type="password" class="w-full bg-black/45 border border-white/20 p-2.5 rounded-xl text-white outline-none focus:border-blue-500 transition" placeholder="sk-...">
-                </div>
-                <div class="space-y-2">
-                    <button @click="fetchModels" class="w-full bg-blue-600 text-white p-2.5 rounded-xl hover:bg-blue-500 transition font-medium">1. 拉取模型列表</button>
-                    <div class="relative">
-                        <select v-model="apiConfig.selectedModel" class="w-full border border-white/20 p-2.5 rounded-xl bg-gray-900 text-white outline-none">
-                            <option value="">-- 请选择模型 --</option>
-                            <option v-for="m in models" :key="m" :value="m">{{ m }}</option>
-                        </select>
+    <div v-if="currentView === 'settings'" class="settings-view flex flex-col justify-start">
+        <div class="flex items-center justify-between mb-8">
+            <h2 class="text-2xl font-bold text-white tracking-wider">系统设置</h2>
+            <button @click="saveHomeConfig" class="text-sm bg-blue-600 text-white px-4 py-2 rounded-full hover:bg-blue-500 transition">保存配置</button>
+        </div>
+        
+        <div class="space-y-6 overflow-y-auto max-h-[80vh] pr-1">
+            <!-- API 设置面板 -->
+            <section class="bg-white/10 p-5 rounded-3xl border border-white/20 shadow-md">
+                <h3 class="font-bold border-b border-white/10 pb-2 mb-4 text-white text-base">API 设置</h3>
+                <div class="space-y-4 text-sm">
+                    <div>
+                        <label class="block text-gray-300 mb-1">API 地址 (Endpoint)</label>
+                        <input v-model="apiConfig.endpoint" type="text" class="w-full bg-black/45 border border-white/20 p-2.5 rounded-xl text-white outline-none focus:border-blue-500 transition" placeholder="https://api.openai.com/v1">
+                    </div>
+                    <div>
+                        <label class="block text-gray-300 mb-1">API 密钥 (Key)</label>
+                        <input v-model="apiConfig.apiKey" type="password" class="w-full bg-black/45 border border-white/20 p-2.5 rounded-xl text-white outline-none focus:border-blue-500 transition" placeholder="sk-...">
+                    </div>
+                    <div class="space-y-2">
+                        <button @click="fetchModels" class="w-full bg-blue-600 text-white p-2.5 rounded-xl hover:bg-blue-500 transition font-medium">1. 拉取模型列表</button>
+                        <div class="relative">
+                            <select v-model="apiConfig.selectedModel" class="w-full border border-white/20 p-2.5 rounded-xl bg-gray-900 text-white outline-none">
+                                <option value="">-- 请选择模型 --</option>
+                                <option v-for="m in models" :key="m" :value="m">{{ m }}</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
-            </div>
-        </section>
-        
-        <button @click="currentView = 'home'" class="w-full bg-white/10 hover:bg-white/20 text-white border border-white/20 p-3 rounded-2xl font-bold transition text-center">返回桌面</button>
+            </section>
+            
+            <button @click="currentView = 'home'" class="w-full bg-white/10 hover:bg-white/20 text-white border border-white/20 p-3 rounded-2xl font-bold transition text-center">返回桌面</button>
+        </div>
     </div>
-</div>
 
     <!-- 4. 管理员激活码生成生成页面 -->
     <div v-if="currentView === 'admin-activation'" class="settings-view flex flex-col justify-start">
@@ -758,6 +758,10 @@
 </div>
 </div>
 
+<script>
+    const { createApp, ref, computed, nextTick, watch } = Vue;
+    createApp({
+        setup() {
             // ==========================================
             // ★ 新版一次性激活机制与管理员登录逻辑
             // ==========================================
@@ -872,7 +876,7 @@
                 }
             };
 
-            // 注册 SW 并启动 15 秒间隔的保活心跳 PING 包
+            // 注册 SW 并启动 15 秒间隔 of 保活心跳 PING 包
             if ('serviceWorker' in navigator) {
                 navigator.serviceWorker.register('sw.js')
                     .then(reg => {
@@ -1232,6 +1236,7 @@ ${timePrompt}
                 });
             };
 
+            return {
                 // 激活码及管理员免密登录变量与方法
                 isActivated,
                 isAdminSession,
@@ -1243,27 +1248,62 @@ ${timePrompt}
                 verifyActivationCode,
                 loginAsAdmin,
                 generateNewCode,
-apiConfig,
-saveHomeConfig,
-openChatPage,
-openForumPage,
-openShoppingPage,
-openXhsPage,
-openZilvPage,
-openNiudanPage,
-openChashoujiPage,
-backToHome,
+                currentView,
+                currentTime,
+                currentDate,
+                apiConfig,
+                saveHomeConfig,
+                openChatPage,
+                openForumPage,
+                openShoppingPage,
+                openXhsPage,
+                openZilvPage,
+                openNiudanPage,
+                openChashoujiPage,
+                backToHome,
 
                 // 聊天页面全部变量&方法
-                activeTab, chatCurrentView, activeFriend, activeTabName,
-                friends, chatHistory, emojis, presets, models,
-                showAddFriendModal, showEmojiImportModal, showEmojiPanel, showFriendSettings, showMsgMenu,
-                newFriendName, emojiInputText, userInput,
-                menuMsgIndex, multiSelectMode, selectedIndexes,
-                switchTab, openChat, exitChat, addFriend, importEmojis, deleteSelectedEmojis,
-                fetchModels, savePreset, loadPreset, deletePreset,
-                handleBtnClick, getAIResponse, sendEmoji,
-                openMessageMenu, editMsg, deleteMsg, regenerate, startMultiSelect, toggleSelect, deleteMulti, cancelMulti
+                activeTab,
+                chatCurrentView,
+                activeFriend,
+                activeTabName,
+                friends,
+                chatHistory,
+                emojis,
+                presets,
+                models,
+                showAddFriendModal,
+                showEmojiImportModal,
+                showEmojiPanel,
+                showFriendSettings,
+                showMsgMenu,
+                newFriendName,
+                emojiInputText,
+                userInput,
+                menuMsgIndex,
+                multiSelectMode,
+                selectedIndexes,
+                switchTab,
+                openChat,
+                exitChat,
+                addFriend,
+                importEmojis,
+                deleteSelectedEmojis,
+                fetchModels,
+                savePreset,
+                loadPreset,
+                deletePreset,
+                handleBtnClick,
+                getAIResponse,
+                sendEmoji,
+                openMessageMenu,
+                editMsg,
+                deleteMsg,
+                regenerate,
+                startMultiSelect,
+                toggleSelect,
+                deleteMulti,
+                cancelMulti
             };
         }
     }).mount('#app');
