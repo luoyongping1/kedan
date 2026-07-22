@@ -1588,6 +1588,11 @@ ${wvPrompt}${mapPrompt}${stylePrompt}
                         offlineChatHistory.value[key].pop(); // 移除“互动中...”提示
                         offlineChatHistory.value[key].push({ role: 'assistant', type: 'text', content: reply });
                         scrollOfflineBottom();
+
+                        // 新增：线下模式如果在后台也触发通知弹窗
+                        if (document.hidden) {
+                            sendNotification(`${activeFriend.value.name} (线下相处中)`, reply);
+                        }
                     } catch (e) {
                         const lastHistory = offlineChatHistory.value[key];
                         if (lastHistory && lastHistory.length > 0 && lastHistory[lastHistory.length - 1].content === '见面互动中...') {
@@ -1882,6 +1887,11 @@ ${wvPrompt}${mapPrompt}${timePrompt}${rechargePrompt}
                             }
                             chatHistory.value[fId].push({ role: 'assistant', type: 'text', content: lines[i] });
                             scrollToBottom(); // 每次发送新气泡，聊天窗口自动滚到最下方
+                        }
+
+                        // 新增：如果当前窗口处于后台（例如用户返回了系统桌面或锁屏），发送通知
+                        if (document.hidden) {
+                            sendNotification(activeFriend.value.name, reply);
                         }
                         
                         // 偶尔发送表情包逻辑
@@ -2445,6 +2455,35 @@ ${wvPrompt}${mapPrompt}${timePrompt}${rechargePrompt}
                         activeFriend.value.selectedWorldviewId = wvId;
                     }
                 };
+
+                // 新增：在聊天室中发送系统后台通知弹窗方法
+                const sendNotification = (title, body) => {
+                    const isNotificationEnabled = localStorage.getItem('sys_bg_notification') === 'true';
+                    if (isNotificationEnabled && 'serviceWorker' in navigator && navigator.serviceWorker.controller) {
+                        navigator.serviceWorker.controller.postMessage({
+                            type: 'SHOW_NOTIFICATION',
+                            title: title,
+                            body: body
+                        });
+                    }
+                };
+
+                // 新增：在聊天室独立运行时也注册SW，并按配置发送心跳包保活
+                if ('serviceWorker' in navigator) {
+                    navigator.serviceWorker.register('sw.js')
+                        .then(reg => {
+                            console.log('[SW] 聊天室 SW 注册成功:', reg);
+                            setInterval(() => {
+                                const isKeepAliveEnabled = localStorage.getItem('sys_bg_keepalive') === 'true';
+                                if (isKeepAliveEnabled && navigator.serviceWorker.controller) {
+                                    navigator.serviceWorker.controller.postMessage({ type: 'PING' });
+                                }
+                            }, 15000);
+                        })
+                        .catch(err => {
+                            console.error('[SW] 聊天室 SW 注册失败:', err);
+                        });
+                }
 
                 return {
                     // 暴露地图数据

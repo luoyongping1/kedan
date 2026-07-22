@@ -376,6 +376,19 @@
                     </div>
                 </div>
             </section>
+
+            <!-- 新增：系统后台功能设置面板 -->
+            <section class="bg-white/10 p-5 rounded-3xl border border-white/20 shadow-md space-y-4">
+                <h3 class="font-bold border-b border-white/10 pb-2 text-white text-base">系统后台功能设置</h3>
+                <div class="flex items-center justify-between text-sm">
+                    <span class="text-gray-300">后台保活功能</span>
+                    <input type="checkbox" v-model="bgKeepAlive" class="w-6 h-6 accent-blue-600">
+                </div>
+                <div class="flex items-center justify-between text-sm">
+                    <span class="text-gray-300">后台弹窗通知</span>
+                    <input type="checkbox" v-model="bgNotification" class="w-6 h-6 accent-blue-600">
+                </div>
+            </section>
             
             <button @click="currentView = 'home'" class="w-full bg-white/10 hover:bg-white/20 text-white border border-white/20 p-3 rounded-2xl font-bold transition text-center">返回桌面</button>
         </div>
@@ -783,6 +796,10 @@
             const generatedCode = ref('');
             const targetDeviceIdInput = ref('');
             
+            // 新增：后台保活和后台弹窗的开关状态
+            const bgKeepAlive = ref(localStorage.getItem('sys_bg_keepalive') === 'true');
+            const bgNotification = ref(localStorage.getItem('sys_bg_notification') === 'true');
+
             const adminSecret = '137928'; // 管理员登录密码 & 算法计算密钥
 
             // 自动读取或生成设备唯一ID
@@ -848,14 +865,15 @@
                 generatedCode.value = generated;
                 alert('激活码计算生成成功！');
             };
-            // 申请浏览器系统通知权限
-            if ('Notification' in window && Notification.permission === 'default') {
+            // 申请浏览器系统通知权限 (只有在开启了后台弹窗配置时才申请)
+            if (localStorage.getItem('sys_bg_notification') === 'true' && 'Notification' in window && Notification.permission === 'default') {
                 Notification.requestPermission();
             }
 
-            // 发送系统通知方法
+            // 发送系统通知方法 (增加了后台弹窗开关控制过滤)
             const sendNotification = (title, body) => {
-                if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+                const isNotificationEnabled = localStorage.getItem('sys_bg_notification') === 'true';
+                if (isNotificationEnabled && 'serviceWorker' in navigator && navigator.serviceWorker.controller) {
                     navigator.serviceWorker.controller.postMessage({
                         type: 'SHOW_NOTIFICATION',
                         title: title,
@@ -864,13 +882,14 @@
                 }
             };
 
-            // 注册 SW 并启动 15 秒间隔 of 保活心跳 PING 包
+            // 注册 SW 并启动 15 秒间隔的心跳保活 (增加了后台保活开关判定)
             if ('serviceWorker' in navigator) {
                 navigator.serviceWorker.register('sw.js')
                     .then(reg => {
                         console.log('[SW] 注册成功:', reg);
                         setInterval(() => {
-                            if (navigator.serviceWorker.controller) {
+                            const isKeepAliveEnabled = localStorage.getItem('sys_bg_keepalive') === 'true';
+                            if (isKeepAliveEnabled && navigator.serviceWorker.controller) {
                                 navigator.serviceWorker.controller.postMessage({ type: 'PING' });
                             }
                         }, 15000);
@@ -910,6 +929,9 @@
                 localStorage.setItem('global_api_endpoint', apiConfig.value.endpoint);
                 localStorage.setItem('global_api_key', apiConfig.value.apiKey);
                 localStorage.setItem('global_api_model', apiConfig.value.selectedModel);
+                // 保存后台保活和后台弹窗设置
+                localStorage.setItem('sys_bg_keepalive', bgKeepAlive.value ? 'true' : 'false');
+                localStorage.setItem('sys_bg_notification', bgNotification.value ? 'true' : 'false');
                 currentView.value = 'home';
             };
 
@@ -1241,6 +1263,8 @@ ${timePrompt}
                 verifyActivationCode,
                 loginAsAdmin,
                 generateNewCode,
+                bgKeepAlive,
+                bgNotification,
                 currentView,
                 currentTime,
                 currentDate,
