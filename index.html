@@ -874,9 +874,10 @@
                 generatedCode.value = generated;
                 alert('激活码计算生成成功！');
             };
-// 申请浏览器系统通知权限 (只有在开启了后台弹窗配置时才申请)
-if (localStorage.getItem('sys_bg_notification') === 'true' && 'Notification' in window && Notification.permission === 'default') {
-    Notification.requestPermission();
+// 仅在页面加载时同步一次本地开关状态，绝对不主动申请权限
+if ('Notification' in window && Notification.permission !== 'granted') {
+    localStorage.setItem('sys_bg_notification', 'false');
+    bgNotification.value = false;
 }
 
 // 发送系统通知方法 (使用更稳定的直接通知通道)
@@ -1044,23 +1045,24 @@ const handleNotificationChange = () => {
             return;
         }
 
-        // 如果用户以前在浏览器里点过拒绝，必须引导用户去地址栏左侧手动解禁
-        if (Notification.permission === 'denied') {
-            alert('Edge浏览器已永久禁止此站点的通知弹窗。\n\n请点击浏览器顶部地址栏最左侧的“🔒 (锁)”图标，将“通知”修改为“允许”，然后刷新网页重新开启！');
+        // 检测当前浏览器的授权状态
+        if (Notification.permission === 'denied' || localStorage.getItem('sys_notification_blocked') === 'true') {
+            alert('【重要提示】此站点已被Edge浏览器列入通知黑名单。\n\n请按照以下步骤解禁：\n1. 点击Edge浏览器顶部输入网址框左侧的“🔒 (锁)”或“查看站点信息”图标。\n2. 找到“权限”或“通知”选项，将其更改为“允许”。\n3. 刷新网页，重新点击此开关！');
             bgNotification.value = false;
             localStorage.setItem('sys_bg_notification', 'false');
             return;
         }
 
-        // 进行权限申请
+        // 进行由用户直接点击触发的权限申请
         Notification.requestPermission().then(permission => {
             if (permission !== 'granted') {
-                alert('授权失败！请点击浏览器地址栏左侧的“🔒 (锁)”图标并允许通知。');
+                alert('授权失败！Edge判定此请求已被自动静音或禁止。请点击浏览器地址栏左侧的“🔒 (锁)”图标，手动允许“通知”权限。');
                 bgNotification.value = false;
                 localStorage.setItem('sys_bg_notification', 'false');
+                localStorage.setItem('sys_notification_blocked', 'true'); // 记录被拒状态
             } else {
                 localStorage.setItem('sys_bg_notification', 'true');
-                // 成功授权后，发送一条测试推送
+                localStorage.setItem('sys_notification_blocked', 'false');
                 sendNotification('通知测试', '后台弹窗已成功启用！');
             }
         });

@@ -2479,10 +2479,7 @@ const sendNotification = (title, body) => {
     }
 };
 
-// 在聊天室页面中，如果检测到设置开启了通知但浏览器还未授权，主动申请一次权限
-if (localStorage.getItem('sys_bg_notification') === 'true' && 'Notification' in window && Notification.permission === 'default') {
-    Notification.requestPermission();
-}
+
 
 // 新增：在聊天室独立运行时也注册SW，并按配置发送心跳包保活
                 if ('serviceWorker' in navigator) {
