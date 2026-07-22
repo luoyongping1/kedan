@@ -208,16 +208,21 @@
         <div class="w-full max-w-sm bg-zinc-900 p-6 rounded-3xl border border-zinc-800 shadow-2xl space-y-5 text-center">
             <div class="text-4xl">🔐</div>
             <h2 class="text-xl font-bold tracking-wider">系统激活验证</h2>
-            <p class="text-xs text-zinc-400 leading-relaxed">检测到当前设备尚未激活，请输入激活码进行激活解锁。</p>
+            <p class="text-xs text-zinc-400 leading-relaxed">检测到当前设备尚未激活，请将下方的设备ID发送给管理员换取激活码。</p>
             
             <input v-model="activationCodeInput" type="text" 
                    class="w-full bg-black border border-zinc-800 p-3.5 rounded-2xl text-center text-sm font-semibold tracking-widest outline-none focus:border-orange-500 transition text-white" 
                    placeholder="请输入激活码">
             
-            <button @click="verifyActivationCode" :disabled="isVerifying" 
-                    class="w-full bg-orange-600 hover:bg-orange-500 disabled:bg-zinc-700 text-white py-3.5 rounded-2xl font-bold transition text-sm shadow-lg shadow-orange-900/20">
-                {{ isVerifying ? '正在联网验证...' : '立即激活绑定' }}
+            <button @click="verifyActivationCode" 
+                    class="w-full bg-orange-600 hover:bg-orange-500 text-white py-3.5 rounded-2xl font-bold transition text-sm shadow-lg shadow-orange-900/20">
+                立即激活解锁
             </button>
+            
+            <div class="pt-2 border-t border-zinc-800/80">
+                <span class="text-[10px] text-zinc-500 block">您的设备ID (双击复制)：</span>
+                <span class="text-xs font-mono font-bold text-orange-400 select-all">{{ deviceId }}</span>
+            </div>
         </div>
         
         <!-- 管理员登录入口 -->
@@ -385,11 +390,16 @@
         
         <div class="space-y-6 overflow-y-auto max-h-[80vh] pr-1">
             <section class="bg-white/10 p-5 rounded-3xl border border-white/20 shadow-md space-y-4">
-                <h3 class="font-bold border-b border-white/10 pb-2 text-white text-base">新建系统激活码</h3>
-                <p class="text-xs text-zinc-400">点击按钮生成并写入一个一次性激活码。用户激活该码后，云端数据库会自动标记并使其失效。</p>
+                <h3 class="font-bold border-b border-white/10 pb-2 text-white text-base">为设备生成激活码</h3>
+                <p class="text-xs text-zinc-400">请输入购买用户的“设备ID”，系统将离线算出一个专属该设备的一机一码激活码。</p>
+                
+                <div class="space-y-2">
+                    <label class="block text-xs text-zinc-300">用户设备ID：</label>
+                    <input v-model="targetDeviceIdInput" type="text" class="w-full bg-black border border-zinc-800 p-3 rounded-xl text-xs text-white outline-none focus:border-purple-500" placeholder="在此粘贴用户的设备ID (例如: DEV-XXXX-XXXX)">
+                </div>
                 
                 <button @click="generateNewCode" class="w-full bg-green-600 hover:bg-green-500 text-white p-3 rounded-xl font-bold transition text-xs">
-                    生成并写入一个新激活码
+                    立即生成计算激活码
                 </button>
                 
                 <div v-if="generatedCode" class="bg-black/50 p-4 rounded-xl border border-zinc-800 text-center select-all space-y-2">
@@ -763,67 +773,54 @@
     createApp({
         setup() {
             // ==========================================
-            // ★ 新版一次性激活机制与管理员登录逻辑
+            // ★ 新版无数据库一机一码离线激活机制与管理员登录逻辑
             // ==========================================
             const isActivated = ref(localStorage.getItem('sys_activated') === 'true');
             const isAdminSession = ref(localStorage.getItem('sys_is_admin') === 'true');
             const activationCodeInput = ref('');
-            const isVerifying = ref(false);
             const showAdminLoginModal = ref(false);
             const adminPasswordInput = ref('');
             const generatedCode = ref('');
+            const targetDeviceIdInput = ref('');
             
-            const cloudToken = 'kedan_cellphone_act_token_8899'; // 换用 keyvalue 独立存储通道
-            const adminSecret = '137928'; // 管理员登录密码
+            const adminSecret = '137928'; // 管理员登录密码 & 算法计算密钥
 
-            // 激活码验证逻辑：一个激活码只能用一次
-            const verifyActivationCode = async () => {
+            // 自动读取或生成设备唯一ID
+            let devId = localStorage.getItem('sys_device_id');
+            if (!devId) {
+                devId = 'DEV-' + Math.random().toString(36).substring(2, 8).toUpperCase() + '-' + Date.now().toString(36).toUpperCase();
+                localStorage.setItem('sys_device_id', devId);
+            }
+            const deviceId = ref(devId);
+
+            // 离线核心算法：输入设备ID和密钥，算出一个只能由该设备识别的唯一激活码
+            const calculateLocalCode = (idStr) => {
+                let hash = 0;
+                const combined = idStr.trim().toUpperCase() + "_" + adminSecret;
+                for (let i = 0; i < combined.length; i++) {
+                    const char = combined.charCodeAt(i);
+                    hash = ((hash << 5) - hash) + char;
+                    hash = hash & hash; // 转为32位整型
+                }
+                const rawPart = Math.abs(hash).toString(36).toUpperCase();
+                return 'ACT-' + rawPart.substring(0, 4) + '-' + rawPart.substring(4, 8);
+            };
+
+            // 激活码验证逻辑：对比输入的激活码和本机设备ID算出的码是否完全一致
+            const verifyActivationCode = () => {
                 const code = activationCodeInput.value.trim().toUpperCase();
                 if (!code) return alert('请输入激活码！');
-                isVerifying.value = true;
                 
-                try {
-                    // 1. 联网查询此激活码是否存在
-                    const res = await fetch(`https://keyvalue.xyz/v1/${cloudToken}/code_${code}`);
-                    if (!res.ok) {
-                        throw new Error('该激活码无效或已被作废！');
-                    }
-                    const rawText = await res.text();
-                    if (!rawText) {
-                        throw new Error('云端数据为空！');
-                    }
-                    const data = JSON.parse(rawText);
-                    
-                    // 2. 校验激活码是否被使用过
-                    if (data.used === true) {
-                        throw new Error('该激活码已被他人激活使用过！');
-                    }
-                    
-                    // 3. 将其在云端标记为已使用
-                    data.used = true;
-                    data.use_time = new Date().toLocaleString();
-                    
-                    const updateRes = await fetch(`https://keyvalue.xyz/v1/${cloudToken}/code_${code}`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'text/plain'
-                        },
-                        body: JSON.stringify(data)
-                    });
-                    
-                    if (updateRes.ok) {
-                        localStorage.setItem('sys_activated', 'true');
-                        localStorage.setItem('sys_is_admin', 'false'); // 通过激活码激活，非管理员
-                        isAdminSession.value = false;
-                        isActivated.value = true;
-                        alert('系统激活成功！');
-                    } else {
-                        alert('联网更新失败，请重试！');
-                    }
-                } catch (e) {
-                    alert(`验证失败：${e.message}`);
-                } finally {
-                    isVerifying.value = false;
+                const expectedCode = calculateLocalCode(deviceId.value);
+                
+                if (code === expectedCode) {
+                    localStorage.setItem('sys_activated', 'true');
+                    localStorage.setItem('sys_is_admin', 'false'); // 通过激活码激活，非管理员
+                    isAdminSession.value = false;
+                    isActivated.value = true;
+                    alert('系统激活成功！');
+                } else {
+                    alert('激活码错误，激活失败！请确认输入的激活码无误，或联系管理员重新获取。');
                 }
             };
 
@@ -842,33 +839,14 @@
                 }
             };
 
-            // 生成新激活码逻辑
-            const generateNewCode = async () => {
-                // 生成一个高强度的随机激活码
-                const randomCode = 'ACT-' + Math.random().toString(36).substring(2, 6).toUpperCase() + '-' + Math.random().toString(36).substring(2, 6).toUpperCase();
+            // 生成新激活码逻辑 (根据管理员在后台输入的用户设备ID进行数学运算)
+            const generateNewCode = () => {
+                const targetId = targetDeviceIdInput.value.trim().toUpperCase();
+                if (!targetId) return alert('请输入目标设备的设备ID！');
                 
-                try {
-                    // 初始化 used 为 false，写入云端
-                    const res = await fetch(`https://keyvalue.xyz/v1/${cloudToken}/code_${randomCode}`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'text/plain'
-                        },
-                        body: JSON.stringify({
-                            used: false,
-                            create_time: new Date().toLocaleString()
-                        })
-                    });
-                    
-                    if (res.ok) {
-                        generatedCode.value = randomCode;
-                        alert('激活码生成并成功写入云端数据库！');
-                    } else {
-                        alert('写入云端出错，请检查网络状况！');
-                    }
-                } catch (e) {
-                    alert(`生成激活码失败：${e.message}`);
-                }
+                const generated = calculateLocalCode(targetId);
+                generatedCode.value = generated;
+                alert('激活码计算生成成功！');
             };
             // 申请浏览器系统通知权限
             if ('Notification' in window && Notification.permission === 'default') {
@@ -1251,10 +1229,11 @@ ${timePrompt}
                 isActivated,
                 isAdminSession,
                 activationCodeInput,
-                isVerifying,
                 showAdminLoginModal,
                 adminPasswordInput,
                 generatedCode,
+                deviceId,
+                targetDeviceIdInput,
                 verifyActivationCode,
                 loginAsAdmin,
                 generateNewCode,
