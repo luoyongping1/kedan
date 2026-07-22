@@ -268,8 +268,24 @@
 </head>
 <body oncontextmenu="return false;">
 
+<!-- 顶部目标状态栏与切换按钮 -->
+<div id="status-bar" style="position: absolute; top: 15px; left: 25px; right: 25px; display: flex; justify-content: space-between; align-items: center; z-index: 100;">
+    <span id="current-target-name" style="font-size: 14px; font-weight: bold; color: #262626; background: rgba(255,255,255,0.6); padding: 4px 10px; border-radius: 20px; backdrop-filter: blur(10px);">目标: 未选择</span>
+    <button onclick="showSelector()" style="font-size: 12px; font-weight: bold; border: none; background: #007aff; color: white; padding: 6px 12px; border-radius: 20px; cursor: pointer; box-shadow: 0 4px 10px rgba(0,122,255,0.2);">切换角色</button>
+</div>
+
 <div id="wallpaper"></div>
 <div id="home-screen"></div>
+
+<!-- 角色选择遮罩层 -->
+<div id="char-selector" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #f6f6f6; z-index: 2000; display: flex; flex-direction: column; padding: 25px; box-sizing: border-box;">
+    <div style="font-size: 20px; font-weight: bold; color: #333; text-align: center; margin-top: 40px; margin-bottom: 5px;">查手机 - 选择目标</div>
+    <div style="font-size: 13px; color: #888; text-align: center; margin-bottom: 25px;">请选择你想查看谁的手机内容：</div>
+    <div id="char-list" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; padding-bottom: 30px;">
+        <!-- 动态渲染好友列表 -->
+    </div>
+    <button onclick="window.location.href='index.html'" style="width: 100%; padding: 14px; background: #8e8e93; color: white; border: none; border-radius: 16px; font-weight: bold; font-size: 15px; cursor: pointer; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">返回桌面</button>
+</div>
 
 <div id="app-window" class="app-page">
     <div class="nav-bar">
@@ -336,8 +352,6 @@ let albumData = [];
 let walletHistory = null;
 
 window.onload = () => {
-    const targetName = localStorage.getItem('target_check_name') || "手机";
-    document.title = targetName + "的手机";
     const saved = localStorage.getItem('ai_persona_v6');
     if(saved) {
         const data = JSON.parse(saved);
@@ -346,10 +360,128 @@ window.onload = () => {
             document.getElementById('wallpaper').style.backgroundImage = data.wallpaper;
         }
     }
-    render();
     updateTime();
     setInterval(updateTime, 1000);
+    
+    // 初始化显示角色选择器
+    showSelector();
 };
+
+// 显示角色选择界面，动态从微信获取角色列表
+function showSelector() {
+    const selector = document.getElementById('char-selector');
+    selector.style.display = 'flex';
+    
+    const listContainer = document.getElementById('char-list');
+    listContainer.innerHTML = '';
+    
+    // 从微信(聊天)数据中获取好友列表
+    const chatFriends = JSON.parse(localStorage.getItem('chat_friends') || '[]');
+    
+    if (chatFriends.length === 0) {
+        listContainer.innerHTML = `
+            <div style="text-align: center; margin-top: 50px; color: #999;">
+                <i class="fas fa-user-slash" style="font-size: 40px; margin-bottom: 10px;"></i>
+                <p>暂无微信好友数据</p>
+                <p style="font-size: 12px; margin-top: 5px;">请先去“聊天”App中添加好友</p>
+            </div>
+        `;
+        return;
+    }
+    
+    chatFriends.forEach(friend => {
+        const item = document.createElement('div');
+        item.style.cssText = `
+            background: white;
+            padding: 16px;
+            border-radius: 18px;
+            border: 1px solid #e5e5e5;
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.02);
+            transition: transform 0.2s;
+        `;
+        item.onclick = () => selectCharacter(friend);
+        
+        // 头像
+        const avatar = document.createElement('div');
+        avatar.style.cssText = `
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: #1296db;
+            color: white;
+            font-weight: bold;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 15px;
+            flex-shrink: 0;
+        `;
+        avatar.innerText = friend.name ? friend.name[0] : '?';
+        
+        // 文本信息容器
+        const info = document.createElement('div');
+        info.style.cssText = `
+            flex: 1;
+            min-width: 0;
+        `;
+        
+        const name = document.createElement('div');
+        name.style.cssText = `
+            font-size: 16px;
+            font-weight: bold;
+            color: #333;
+        `;
+        name.innerText = friend.name;
+        
+        const persona = document.createElement('div');
+        persona.style.cssText = `
+            font-size: 12px;
+            color: #888;
+            margin-top: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        `;
+        persona.innerText = friend.persona || '暂无人设设定';
+        
+        info.appendChild(name);
+        info.appendChild(persona);
+        item.appendChild(avatar);
+        item.appendChild(info);
+        listContainer.appendChild(item);
+    });
+}
+
+// 选中某个角色后的处理逻辑
+function selectCharacter(friend) {
+    // 写入当前需要破译查询的机主名字
+    localStorage.setItem('target_check_name', friend.name);
+    document.title = friend.name + "的手机";
+    
+    const targetLabel = document.getElementById('current-target-name');
+    if (targetLabel) {
+        targetLabel.innerText = "目标: " + friend.name;
+    }
+    
+    // 重置之前选择角色的应用历史记录，避免多个角色数据互相污染
+    currentQQFriends = [];
+    qqChatHistories = {};
+    browserHistory = [];
+    shopCartData = [];   
+    currentDiaryData = null;
+    albumData = []; 
+    walletHistory = null;
+    
+    // 隐藏选择器，显示手机桌面
+    document.getElementById('char-selector').style.display = 'none';
+    
+    // 渲染该选定角色的手机桌面
+    render();
+}
 
 function updateTime() {
     const now = new Date();
