@@ -1671,27 +1671,28 @@ ${wvPrompt}${mapPrompt}${stylePrompt}
                 };
 
                 const handleBtnClick = () => {
-                    if (userInput.value) {
-                        const text = userInput.value;
-                        const fId = activeFriend.value.id;
-                        
-                        // 感知最近一次的聊天时间
-                        activeFriend.value.lastUserChatTime = Date.now();
+    if (userInput.value) {
+        const text = userInput.value;
+        const fId = activeFriend.value.id;
+        
+        // 感知最近一次的聊天时间
+        activeFriend.value.lastUserChatTime = Date.now();
 
-                        const newMsg = { role: 'user', type: 'text', content: text };
-                        if (quotedText.value) {
-                            newMsg.quoted = quotedText.value;
-                            quotedText.value = '';
-                        }
+        const newMsg = { role: 'user', type: 'text', content: text };
+        if (quotedText.value) {
+            newMsg.quoted = quotedText.value;
+            quotedText.value = '';
+        }
 
-                        chatHistory.value[fId].push(newMsg);
-                        userInput.value = '';
-                        scrollToBottom();
-                        getAIResponse(); // 此处确保发送消息后自动调用AI进行响应
-                    } else {
-                        getAIResponse();
-                    }
-                };
+        chatHistory.value[fId].push(newMsg);
+        userInput.value = '';
+        scrollToBottom();
+        // 这里删除了原本自动调用回复的 getAIResponse()，发送后 AI 不会自动说话
+    } else {
+        // 只有输入框里没有字时，点击“续写”按钮，才会触发AI回复
+        getAIResponse();
+    }
+};
 
                 const getAIResponse = async () => {
                     const fId = activeFriend.value.id;
