@@ -4,6 +4,15 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
+    
+    <!-- iOS 苹果设备全屏运行专用的设置 -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="客单小手机" />
+    
+    <!-- 引入刚刚创建的 manifest.json 配置文件，实现 Edge/Chrome 浏览器添加到手机全屏 -->
+    <link rel="manifest" href="manifest.json" />
+    
     <title>客单小手机</title>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>

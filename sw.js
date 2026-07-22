@@ -2,6 +2,12 @@
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', (event) => event.waitUntil(clients.claim()));
 
+// 监听 fetch 事件：这是 Edge/Chrome 判定网站支持“添加到手机/安装”的硬性条件
+self.addEventListener('fetch', (event) => {
+    // 这里我们不做复杂的本地缓存，直接向网络请求，防止您以后修改更新代码时被缓存卡死
+    event.respondWith(fetch(event.request));
+});
+
 // --- 监听来自网页的消息 ---
 self.addEventListener('message', (event) => {
     if (!event.data) return;
