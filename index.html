@@ -800,7 +800,7 @@
                     data.use_time = new Date().toLocaleString();
                     
                     const updateRes = await fetch(`https://kvdb.io/${kvdbBucket}/code_${code}`, {
-                        method: 'POST',
+                        method: 'PUT',
                         body: JSON.stringify(data)
                     });
                     
@@ -843,7 +843,7 @@
                 try {
                     // 初始化 used 为 false，写入云端
                     const res = await fetch(`https://kvdb.io/${kvdbBucket}/code_${randomCode}`, {
-                        method: 'POST',
+                        method: 'PUT',
                         body: JSON.stringify({
                             used: false,
                             create_time: new Date().toLocaleString()
