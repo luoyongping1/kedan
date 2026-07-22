@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>地图管理</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <style>
+        .safe-area-bottom { padding-bottom: env(safe-area-inset-bottom); }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        
+        body {
+            background-color: #f6f6f6;
+            background-image: radial-gradient(circle, #e5e5e5 1px, transparent 1px);
+            background-size: 16px 16px;
+        }
+
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.65) !important;
+            backdrop-filter: blur(25px) !important;
+            -webkit-backdrop-filter: blur(25px) !important;
+            border: 1.5px solid rgba(255, 255, 255, 0.8) !important;
+        }
+    </style>
+</head>
+<body class="h-screen flex justify-center overflow-hidden text-gray-800 font-sans">
+    
+    <div id="app" class="w-full max-w-md h-full flex flex-col justify-between p-4 relative overflow-hidden">
+        
+        <!-- Header 头部栏 -->
+        <header class="border-b border-white/30 text-stone-800 p-3 flex justify-between items-center shrink-0 glass-effect rounded-2xl mb-2">
+            <div class="flex items-center space-x-2 min-w-[60px]">
+                <button @click="handleBack" class="text-sm font-bold text-stone-600 hover:text-black">← 返回</button>
+            </div>
+            <h1 class="text-base font-bold truncate px-2">{{ pageTitle }}</h1>
+            <div class="flex items-center justify-end min-w-[60px]">
+                <button v-if="currentView === 'list'" @click="openAddMap" class="text-xs bg-stone-800 text-white px-2.5 py-1.5 rounded-full hover:bg-stone-900 transition">
+                    + 新建地图
+                </button>
+                <button v-if="currentView === 'detail'" @click="currentView = 'distance'" class="text-xs bg-amber-600 text-white px-2.5 py-1.5 rounded-full hover:bg-amber-700 transition">
+                    📏 设距离
+                </button>
+            </div>
+        </header>
+
+        <!-- 主内容区域 -->
+        <main class="flex-1 overflow-y-auto hide-scrollbar space-y-4 pb-4">
+            
+            <!-- 1. 地图列表视图 -->
+            <div v-if="currentView === 'list'" class="space-y-3">
+                <div v-if="maps.length === 0" class="text-center py-20 text-stone-400 text-xs">
+                    暂无地图，请点击右上角新建一张地图吧！
+                </div>
+                <div v-for="map in maps" :key="map.id" class="bg-white/80 p-4 rounded-3xl border border-white shadow-sm flex flex-col space-y-3">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-12 h-12 rounded-xl bg-stone-200 overflow-hidden shrink-0 border border-stone-300">
+                            <img :src="map.bgData || 'https://picsum.photos/100/100'" class="w-full h-full object-cover">
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <h4 class="font-bold text-stone-800 text-sm truncate">{{ map.name }}</h4>
+                            <p class="text-[10px] text-stone-400 mt-0.5">已标记 {{ map.markers ? map.markers.length : 0 }} 个地点</p>
+                        </div>
+                    </div>
+                    <div class="flex justify-end space-x-2 pt-2 border-t border-stone-100">
+                        <button @click="openDotsEditor(map)" class="text-xs bg-stone-800 text-white px-3 py-1.5 rounded-xl hover:bg-stone-900 transition">标记与查看</button>
+                        <button @click="openEditMap(map)" class="text-xs bg-stone-100 text-stone-700 border border-stone-200 px-3 py-1.5 rounded-xl hover:bg-stone-200 transition">修改名字</button>
+                        <button @click="deleteMap(map.id)" class="text-xs bg-red-500 text-white px-3 py-1.5 rounded-xl hover:bg-red-600 transition">删除</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. 添加/修改地图表单 -->
+            <div v-if="currentView === 'edit'" class="bg-white/80 p-5 rounded-3xl border border-white shadow-sm space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-stone-600 mb-1">地图名称</label>
+                    <input v-model="mapForm.name" type="text" class="w-full border p-2.5 rounded-xl text-xs outline-none bg-stone-50/50" placeholder="例如：圣米歇尔学院、神秘小镇">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-stone-600 mb-1">背景图片来源</label>
+                    <div class="flex space-x-4 mb-2">
+                        <label class="flex items-center text-xs space-x-1 cursor-pointer">
+                            <input type="radio" value="url" v-model="mapForm.bgType" class="accent-stone-800">
+                            <span>图片链接 (URL)</span>
+                        </label>
+                        <label class="flex items-center text-xs space-x-1 cursor-pointer">
+                            <input type="radio" value="file" v-model="mapForm.bgType" class="accent-stone-800">
+                            <span>本地上传图片</span>
+                        </label>
+                    </div>
+                    
+                    <input v-if="mapForm.bgType === 'url'" v-model="mapForm.bgData" type="text" class="w-full border p-2.5 rounded-xl text-xs outline-none bg-stone-50/50" placeholder="请输入以 http/https 开头的图片链接">
+                    <div v-else class="space-y-2">
+                        <input type="file" accept="image/*" @change="uploadLocalImage" class="w-full text-xs text-stone-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-stone-800 file:text-white hover:file:bg-stone-900 cursor-pointer">
+                        <div v-if="mapForm.bgData" class="w-full h-32 rounded-xl overflow-hidden border border-stone-200 bg-stone-100">
+                            <img :src="mapForm.bgData" class="w-full h-full object-contain">
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="flex space-x-2 pt-4">
+                    <button @click="currentView = 'list'" class="flex-1 py-2.5 bg-gray-200 text-stone-700 rounded-xl text-xs font-bold">取消</button>
+                    <button @click="saveMap" class="flex-1 py-2.5 bg-stone-800 text-white rounded-xl text-xs font-bold">保存地图</button>
+                </div>
+            </div>
+
+            <!-- 3. 地图打点标记器视图 -->
+            <div v-if="currentView === 'detail'" class="space-y-4">
+                <p class="text-[10px] text-stone-400">💡 提示：在图片中你想设定的地点位置直接【点击/触摸】即可新增打点标记。</p>
+                
+                <!-- 地图画布渲染区 -->
+                <div @click="handleMapCanvasClick" class="relative w-full aspect-[4/3] bg-stone-200 rounded-2xl overflow-hidden shadow-inner border border-stone-300 select-none cursor-crosshair">
+                    <img :src="activeMap.bgData || 'https://picsum.photos/600/400'" class="w-full h-full object-cover pointer-events-none">
+                    
+                    <!-- 渲染所有已存在的地点圆点 -->
+                    <div v-for="marker in activeMap.markers" :key="marker.id"
+                         :style="{ left: marker.x + '%', top: marker.y + '%' }"
+                         @click.stop="clickMarker(marker)"
+                         class="absolute -translate-x-1/2 -translate-y-1/2 flex flex-col items-center z-20 cursor-pointer group">
+                        <div class="w-4.5 h-4.5 rounded-full bg-red-500 border-2 border-white shadow flex items-center justify-center animate-ping absolute opacity-75"></div>
+                        <div class="w-4.5 h-4.5 rounded-full bg-red-600 border-2 border-white shadow flex items-center justify-center text-[7px] text-white font-bold relative">
+                            📍
+                        </div>
+                        <span class="bg-black/85 text-white text-[9px] px-1.5 py-0.5 rounded shadow mt-1 whitespace-nowrap font-medium pointer-events-none">
+                            {{ marker.name }}
+                        </span>
+                    </div>
+                </div>
+
+                <!-- 地点管理列表 -->
+                <div class="bg-white/80 p-4 rounded-3xl border border-white shadow-sm">
+                    <h3 class="font-bold text-xs text-stone-700 border-b pb-2 mb-2">已标记地点列表 ({{ activeMap.markers.length }})</h3>
+                    <div v-if="activeMap.markers.length === 0" class="text-center py-4 text-stone-400 text-xs">
+                        当前地图上暂无标记点，请在上方图上直接点击打点。
+                    </div>
+                    <div v-else class="space-y-2 max-h-48 overflow-y-auto hide-scrollbar">
+                        <div v-for="m in activeMap.markers" :key="m.id" class="flex justify-between items-center p-2 rounded-xl bg-stone-50 border border-stone-100 text-xs">
+                            <span class="font-bold text-stone-800">{{ m.name }}</span>
+                            <div class="space-x-2">
+                                <button @click="renameMarker(m)" class="text-stone-600 hover:text-black">重命名</button>
+                                <button @click="deleteMarker(m.id)" class="text-red-500 hover:text-red-700">删除</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 4. 地点间距离编辑视图 -->
+            <div v-if="currentView === 'distance'" class="space-y-4">
+                <!-- 添加距离表单 -->
+                <div class="bg-white/80 p-4 rounded-3xl border border-white shadow-sm space-y-3 text-xs">
+                    <h3 class="font-bold text-stone-700 border-b pb-2">设置两点间距离</h3>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-stone-500 mb-1">起点</label>
+                            <select v-model="distanceForm.from" class="w-full border p-2 rounded-xl bg-white outline-none">
+                                <option value="">-- 请选择 --</option>
+                                <option v-for="m in activeMap.markers" :key="m.id" :value="m.id">{{ m.name }}</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-stone-500 mb-1">终点</label>
+                            <select v-model="distanceForm.to" class="w-full border p-2 rounded-xl bg-white outline-none">
+                                <option value="">-- 请选择 --</option>
+                                <option v-for="m in activeMap.markers" :key="m.id" :value="m.id">{{ m.name }}</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-stone-500 mb-1">距离描述</label>
+                        <input v-model="distanceForm.distance" type="text" class="w-full border p-2 rounded-xl outline-none" placeholder="例如：500米、步行5分钟、3.2公里">
+                    </div>
+                    <button @click="saveDistance" class="w-full py-2.5 bg-stone-800 text-white rounded-xl font-bold transition">确认添加距离</button>
+                </div>
+
+                <!-- 距离明细列表 -->
+                <div class="bg-white/80 p-4 rounded-3xl border border-white shadow-sm">
+                    <h3 class="font-bold text-xs text-stone-700 border-b pb-2 mb-2">已保存的距离详情</h3>
+                    <div v-if="!activeMap.distances || activeMap.distances.length === 0" class="text-center py-6 text-stone-400 text-xs">
+                        尚未配置过地点之间的距离。
+                    </div>
+                    <div v-else class="space-y-2 max-h-60 overflow-y-auto hide-scrollbar text-xs">
+                        <div v-for="(d, idx) in activeMap.distances" :key="idx" class="flex justify-between items-center p-2.5 rounded-xl bg-stone-50 border border-stone-100">
+                            <div>
+                                <span class="font-bold text-stone-800">{{ getMarkerName(d.from) }}</span>
+                                <span class="text-stone-400 px-1">↔</span>
+                                <span class="font-bold text-stone-800">{{ getMarkerName(d.to) }}</span>
+                            </div>
+                            <div class="flex items-center space-x-3">
+                                <span class="font-semibold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-100">{{ d.distance }}</span>
+                                <button @click="deleteDistance(idx)" class="text-red-500 hover:text-red-700">删除</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+
+        <!-- 地名录入弹窗 -->
+        <div v-if="showMarkerNameModal" class="absolute inset-0 bg-black/50 flex items-center justify-center p-6 z-[60]">
+            <div class="bg-white rounded-2xl w-full p-5 shadow-xl max-w-xs space-y-4">
+                <h3 class="font-bold text-stone-800">标记此地点名称</h3>
+                <input v-model="newMarkerName" type="text" class="w-full border p-2.5 rounded-xl text-xs outline-none bg-stone-50" placeholder="例如：宿舍楼、图书馆" @keyup.enter="confirmSaveMarker">
+                <div class="flex space-x-2">
+                    <button @click="showMarkerNameModal = false" class="flex-1 py-2 bg-gray-200 rounded-xl text-xs text-stone-700">取消</button>
+                    <button @click="confirmSaveMarker" class="flex-1 py-2 bg-stone-800 text-white rounded-xl text-xs">确定保存</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const { createApp, ref, computed, watch } = Vue;
+
+        createApp({
+            setup() {
+                const currentView = ref('list'); // list / edit / detail / distance
+                const maps = ref(JSON.parse(localStorage.getItem('map_app_data') || '[]'));
+                
+                const activeMap = ref(null);
+                const mapForm = ref({ id: null, name: '', bgType: 'url', bgData: '' });
+                
+                // 标记打点相关
+                const showMarkerNameModal = ref(false);
+                const newMarkerName = ref('');
+                const tempCoord = ref({ x: 0, y: 0 });
+
+                // 距离设置相关
+                const distanceForm = ref({ from: '', to: '', distance: '' });
+
+                // 动态头部标题
+                const pageTitle = computed(() => {
+                    if (currentView.value === 'list') return '地图列表';
+                    if (currentView.value === 'edit') return mapForm.value.id ? '编辑地图信息' : '创建新地图';
+                    if (currentView.value === 'detail') return activeMap.value?.name || '地图打点';
+                    if (currentView.value === 'distance') return '地点间距离配置';
+                    return '地图';
+                });
+
+                // 监听地图数据变化，持久化到本地 localStorage 供聊天App共享调用
+                watch(maps, () => {
+                    localStorage.setItem('map_app_data', JSON.stringify(maps.value));
+                }, { deep: true });
+
+                const handleBack = () => {
+                    if (currentView.value === 'list') {
+                        window.location.href = 'index.html'; // 返回桌面
+                    } else if (currentView.value === 'edit') {
+                        currentView.value = 'list';
+                    } else if (currentView.value === 'detail') {
+                        currentView.value = 'list';
+                    } else if (currentView.value === 'distance') {
+                        currentView.value = 'detail';
+                    }
+                };
+
+                const openAddMap = () => {
+                    mapForm.value = { id: null, name: '', bgType: 'url', bgData: '' };
+                    currentView.value = 'edit';
+                };
+
+                const openEditMap = (map) => {
+                    mapForm.value = { id: map.id, name: map.name, bgType: map.bgType || 'url', bgData: map.bgData };
+                    currentView.value = 'edit';
+                };
+
+                // 本地图片转换为 base64 存储
+                const uploadLocalImage = (event) => {
+                    const file = event.target.files[0];
+                    if (file) {
+                        const reader = new FileReader();
+                        reader.onload = (e) => {
+                            mapForm.value.bgData = e.target.result;
+                        };
+                        reader.readAsDataURL(file);
+                    }
+                };
+
+                const saveMap = () => {
+                    if (!mapForm.value.name.trim()) return alert('地图名称不能为空！');
+                    
+                    if (mapForm.value.id) {
+                        // 更新
+                        const map = maps.value.find(m => m.id === mapForm.value.id);
+                        if (map) {
+                            map.name = mapForm.value.name.trim();
+                            map.bgType = mapForm.value.bgType;
+                            map.bgData = mapForm.value.bgData;
+                        }
+                    } else {
+                        // 新建
+                        maps.value.push({
+                            id: Date.now(),
+                            name: mapForm.value.name.trim(),
+                            bgType: mapForm.value.bgType,
+                            bgData: mapForm.value.bgData,
+                            markers: [],
+                            distances: []
+                        });
+                    }
+                    currentView.value = 'list';
+                };
+
+                const deleteMap = (id) => {
+                    if (confirm('确认删除该地图吗？这也会删除其绑定的全部地点与距离设定。')) {
+                        maps.value = maps.value.filter(m => m.id !== id);
+                    }
+                };
+
+                const openDotsEditor = (map) => {
+                    activeMap.value = map;
+                    currentView.value = 'detail';
+                };
+
+                // 地图点击打点核心函数 (利用百分比记录，响应式屏幕下不会偏移)
+                const handleMapCanvasClick = (event) => {
+                    const rect = event.currentTarget.getBoundingClientRect();
+                    const x = ((event.clientX - rect.left) / rect.width) * 100;
+                    const y = ((event.clientY - rect.top) / rect.height) * 100;
+                    
+                    tempCoord.value = { x: parseFloat(x.toFixed(2)), y: parseFloat(y.toFixed(2)) };
+                    newMarkerName.value = '';
+                    showMarkerNameModal.value = true;
+                };
+
+                const confirmSaveMarker = () => {
+                    if (!newMarkerName.value.trim()) return alert('地点名称不能为空！');
+                    
+                    if (!activeMap.value.markers) {
+                        activeMap.value.markers = [];
+                    }
+                    
+                    activeMap.value.markers.push({
+                        id: Date.now(),
+                        name: newMarkerName.value.trim(),
+                        x: tempCoord.value.x,
+                        y: tempCoord.value.y
+                    });
+                    
+                    showMarkerNameModal.value = false;
+                };
+
+                const renameMarker = (marker) => {
+                    const newName = prompt('修改地点名称为：', marker.name);
+                    if (newName && newName.trim()) {
+                        marker.name = newName.trim();
+                    }
+                };
+
+                const deleteMarker = (id) => {
+                    if (confirm('确认要删除该地点吗？删除该点也会同时清理与其关联的距离描述。')) {
+                        activeMap.value.markers = activeMap.value.markers.filter(m => m.id !== id);
+                        if (activeMap.value.distances) {
+                            activeMap.value.distances = activeMap.value.distances.filter(d => d.from !== id && d.to !== id);
+                        }
+                    }
+                };
+
+                const clickMarker = (marker) => {
+                    alert(`名称：${marker.name}\n水平位置：${marker.x}%\n垂直位置：${marker.y}%`);
+                };
+
+                // 距离逻辑管理
+                const getMarkerName = (markerId) => {
+                    const m = activeMap.value?.markers.find(m => m.id === markerId);
+                    return m ? m.name : '已删地点';
+                };
+
+                const saveDistance = () => {
+                    const { from, to, distance } = distanceForm.value;
+                    if (!from || !to || !distance.trim()) {
+                        return alert('起点、终点和距离信息不能为空！');
+                    }
+                    if (from === to) {
+                        return alert('起点和终点不能为同一个地点！');
+                    }
+                    if (!activeMap.value.distances) {
+                        activeMap.value.distances = [];
+                    }
+
+                    // 检查是否已经设置过这两点间的距离
+                    const exists = activeMap.value.distances.some(d => 
+                        (d.from === from && d.to === to) || (d.from === to && d.to === from)
+                    );
+                    if (exists) {
+                        return alert('这两个地点之间的距离已经设定过了，不能重复添加。');
+                    }
+
+                    activeMap.value.distances.push({
+                        from: parseInt(from),
+                        to: parseInt(to),
+                        distance: distance.trim()
+                    });
+
+                    // 清空表单
+                    distanceForm.value.from = '';
+                    distanceForm.value.to = '';
+                    distanceForm.value.distance = '';
+                    alert('添加距离成功！');
+                };
+
+                const deleteDistance = (index) => {
+                    if (confirm('确认删除该两地之间的距离设定吗？')) {
+                        activeMap.value.distances.splice(index, 1);
+                    }
+                };
+
+                return {
+                    currentView,
+                    maps,
+                    activeMap,
+                    mapForm,
+                    pageTitle,
+                    showMarkerNameModal,
+                    newMarkerName,
+                    distanceForm,
+
+                    handleBack,
+                    openAddMap,
+                    openEditMap,
+                    uploadLocalImage,
+                    saveMap,
+                    deleteMap,
+                    openDotsEditor,
+                    handleMapCanvasClick,
+                    confirmSaveMarker,
+                    renameMarker,
+                    deleteMarker,
+                    clickMarker,
+                    getMarkerName,
+                    saveDistance,
+                    deleteDistance
+                };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>

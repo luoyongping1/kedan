@@ -312,10 +312,10 @@
                     <div class="icon-box"></div>
                     <span class="icon-label">App 3</span>
                 </div>
-                <!-- 第4个App -->
-                <div class="app-icon">
-                    <div class="icon-box"></div>
-                    <span class="icon-label">App 4</span>
+                <!-- 第4个App 修改为地图 -->
+                <div class="app-icon" @click="openMapPage">
+                    <div class="icon-box" style="background-color: #007AFF; display: flex; align-items: center; justify-content: center; font-size: 28px;">🗺️</div>
+                    <span class="icon-label">地图</span>
                 </div>
                 <!-- 第5个App -->
                 <div class="app-icon">
@@ -941,6 +941,10 @@
             const openChashoujiPage = () => {
                 window.location.href = '查手机.html';
             };
+            // 打开 地图 页面
+            const openMapPage = () => {
+                window.location.href = '地图.html';
+            };
             // 返回手机桌面
             const backToHome = () => {
                 currentView.value = 'home';
@@ -1249,6 +1253,7 @@ ${timePrompt}
                 openZilvPage,
                 openNiudanPage,
                 openChashoujiPage,
+                openMapPage,
                 backToHome,
 
                 // 聊天页面全部变量&方法

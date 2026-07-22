@@ -688,6 +688,14 @@
                         <span class="font-medium">时间感知 (感知现实时间)</span>
                         <input type="checkbox" v-model="activeFriend.timeAwareness" class="w-5 h-5 accent-stone-800">
                     </div>
+                    <!-- 新增：地图绑定勾选框 -->
+                    <div class="flex items-center justify-between border-t pt-3">
+                        <span class="font-medium">🗺️ 绑定地图设定</span>
+                        <select v-model="activeFriend.boundMapId" class="border p-2 rounded-xl outline-none bg-stone-50/50 text-xs font-semibold text-stone-700 focus:border-stone-500">
+                            <option value="">-- 未绑定地图 --</option>
+                            <option v-for="map in maps" :key="map.id" :value="map.id">{{ map.name }}</option>
+                        </select>
+                    </div>
                     <div class="flex items-center justify-between border-t pt-3">
                         <span class="font-medium">🌍 世界观设定</span>
                         <button @click="openWorldviewManager" class="bg-stone-100 text-stone-700 px-3 py-1.5 rounded-xl border border-stone-200 text-xs font-semibold hover:bg-stone-200/50 transition">
@@ -1038,6 +1046,9 @@
                 const activeTab = ref('chat');
                 const currentView = ref('list'); // list or chat
                 const activeFriend = ref(null);
+
+                // 读取地图 App 中建立的共享地图数据
+                const maps = ref(JSON.parse(localStorage.getItem('map_app_data') || '[]'));
                 
                 // 新增：世界观管理状态
                 const worldviews = ref(JSON.parse(localStorage.getItem('chat_worldviews') || '[]'));
@@ -1499,6 +1510,31 @@
                     offlineChatHistory.value[key].push({ role: 'assistant', type: 'text', content: '见面互动中...' });
                     scrollOfflineBottom();
 
+                    // 地图感知解析逻辑
+                    let mapPrompt = "";
+                    const boundMap = maps.value.find(m => m.id === activeFriend.value.boundMapId);
+                    if (boundMap) {
+                        const locationsStr = boundMap.markers && boundMap.markers.length > 0
+                            ? boundMap.markers.map(m => m.name).join('、')
+                            : "无标记地点";
+                        
+                        let distancesStr = "";
+                        if (boundMap.distances && boundMap.distances.length > 0) {
+                            distancesStr = boundMap.distances.map(d => {
+                                const fromMarker = boundMap.markers.find(m => m.id === d.from);
+                                const toMarker = boundMap.markers.find(m => m.id === d.to);
+                                if (fromMarker && toMarker) {
+                                    return `${fromMarker.name}到${toMarker.name}的设定距离为：${d.distance}`;
+                                }
+                                return "";
+                            }).filter(str => str !== "").join('；');
+                        } else {
+                            distancesStr = "无具体设定距离";
+                        }
+                        
+                        mapPrompt = `\n【当前绑定地图空间信息设定】：\n- 所在地图：${boundMap.name}\n- 存在的地点：${locationsStr}\n- 相对距离设定：${distancesStr}\n【规则】：请记住你们当前面对面互动的空间地理信息，做出符合逻辑的剧情推进回复。`;
+                    }
+
                     // 加载启用的文风与选中的角色世界观设定
                     const activeStyleObj = writingStyles.value.find(s => s.active);
                     const stylePrompt = activeStyleObj ? `\n# 角色说话文风/说话样本（重点模仿）：\n${activeStyleObj.content}\n` : '';
@@ -1511,7 +1547,7 @@
 你现在化身为[${activeFriend.value.name}]。
 当前场景：你与用户正在【线下见面/面对面相处】。
 你的人设背景：${activeFriend.value.persona || '普通人'}
-${wvPrompt}${stylePrompt}
+${wvPrompt}${mapPrompt}${stylePrompt}
 # 线下聊天特有规则（面对面相处）
 1. 沉浸式神态动作描写：请在回复中穿插丰富的神态、动作、心理或环境描写（使用括号如 "（红着脸低下头）" 或星号如 "*手足无措地摆摆手*" 包裹，突出面对面互动的细节与画面感）。
 2. 长对话输出：面对面时你可以输出更加完整、深度的长句和连续对话，不再需要像微信打字那样碎片化拆分发送。
@@ -1656,6 +1692,35 @@ ${wvPrompt}${stylePrompt}
                     const fId = activeFriend.value.id;
                     if (!apiConfig.value.selectedModel) return alert('请先在设置中选择模型');
 
+                    // 地图感知解析逻辑
+                    let mapPrompt = "";
+                    const boundMap = maps.value.find(m => m.id === activeFriend.value.boundMapId);
+                    if (boundMap) {
+                        const locationsStr = boundMap.markers && boundMap.markers.length > 0
+                            ? boundMap.markers.map(m => m.name).join('、')
+                            : "无标记地点";
+                        
+                        let distancesStr = "";
+                        if (boundMap.distances && boundMap.distances.length > 0) {
+                            distancesStr = boundMap.distances.map(d => {
+                                const fromMarker = boundMap.markers.find(m => m.id === d.from);
+                                const toMarker = boundMap.markers.find(m => m.id === d.to);
+                                if (fromMarker && toMarker) {
+                                    return `${fromMarker.name}到${toMarker.name}的设定距离为：${d.distance}`;
+                                }
+                                return "";
+                            }).filter(str => str !== "").join('；');
+                        } else {
+                            distancesStr = "无具体设定距离";
+                        }
+                        
+                        mapPrompt = `\n【当前绑定地图空间信息设定（强制遵守）】：
+- 所在地图：${boundMap.name}
+- 存在的地点：${locationsStr}
+- 设定的地点的相对距离描述：${distancesStr}
+【规则】：你必须完全感知上述空间地图！当用户提到这些地点时，你需要立刻识别，并能根据两地之间的距离逻辑回答问题（例如用户询问从A到B有多远、需要多久到达，你必须用设定里的距离进行合理应答），展现出你确实在这个空间中的活人表现。`;
+                    }
+
                     // 顶级时间感知增强逻辑
                     let timePrompt = "";
                     if (activeFriend.value.timeAwareness) {
@@ -1717,7 +1782,7 @@ ${wvPrompt}${stylePrompt}
                         const sys = `# Role
 你现在化身为[${activeFriend.value.name}]。
 你的性格设定：${activeFriend.value.persona || '普通人'}
-${wvPrompt}${timePrompt}${rechargePrompt}
+${wvPrompt}${mapPrompt}${timePrompt}${rechargePrompt}
 
 # 语言风格（强制执行）
 1. 碎片化：不要一次性说一大堆话。请像真实微信聊天一样，将长句拆分成多条短句发送。
@@ -2382,6 +2447,8 @@ ${wvPrompt}${timePrompt}${rechargePrompt}
                 };
 
                 return {
+                    // 暴露地图数据
+                    maps,
                     // 暴露出世界观数据和操作方法
                     worldviews, showWorldviewModal, worldviewForm,
                     openWorldviewManager, closeWorldviewManager, addWorldview, editWorldview, saveWorldview, deleteWorldview, selectWorldviewForFriend,
