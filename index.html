@@ -773,7 +773,7 @@
             const adminPasswordInput = ref('');
             const generatedCode = ref('');
             
-            const kvdbBucket = 'phone_act_c8f1a3e5b7c94d0'; 
+            const cloudToken = 'kedan_cellphone_act_token_8899'; // 换用 keyvalue 独立存储通道
             const adminSecret = '137928'; // 管理员登录密码
 
             // 激活码验证逻辑：一个激活码只能用一次
@@ -784,11 +784,15 @@
                 
                 try {
                     // 1. 联网查询此激活码是否存在
-                    const res = await fetch(`https://kvdb.io/${kvdbBucket}/code_${code}`);
+                    const res = await fetch(`https://keyvalue.xyz/v1/${cloudToken}/code_${code}`);
                     if (!res.ok) {
                         throw new Error('该激活码无效或已被作废！');
                     }
-                    const data = await res.json();
+                    const rawText = await res.text();
+                    if (!rawText) {
+                        throw new Error('云端数据为空！');
+                    }
+                    const data = JSON.parse(rawText);
                     
                     // 2. 校验激活码是否被使用过
                     if (data.used === true) {
@@ -799,10 +803,10 @@
                     data.used = true;
                     data.use_time = new Date().toLocaleString();
                     
-                    const updateRes = await fetch(`https://kvdb.io/${kvdbBucket}/code_${code}`, {
-                        method: 'PUT',
+                    const updateRes = await fetch(`https://keyvalue.xyz/v1/${cloudToken}/code_${code}`, {
+                        method: 'POST',
                         headers: {
-                            'Content-Type': 'application/json'
+                            'Content-Type': 'text/plain'
                         },
                         body: JSON.stringify(data)
                     });
@@ -845,10 +849,10 @@
                 
                 try {
                     // 初始化 used 为 false，写入云端
-                    const res = await fetch(`https://kvdb.io/${kvdbBucket}/code_${randomCode}`, {
-                        method: 'PUT',
+                    const res = await fetch(`https://keyvalue.xyz/v1/${cloudToken}/code_${randomCode}`, {
+                        method: 'POST',
                         headers: {
-                            'Content-Type': 'application/json'
+                            'Content-Type': 'text/plain'
                         },
                         body: JSON.stringify({
                             used: false,
