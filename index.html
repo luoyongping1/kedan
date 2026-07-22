@@ -874,22 +874,33 @@
                 generatedCode.value = generated;
                 alert('激活码计算生成成功！');
             };
-            // 申请浏览器系统通知权限 (只有在开启了后台弹窗配置时才申请)
-            if (localStorage.getItem('sys_bg_notification') === 'true' && 'Notification' in window && Notification.permission === 'default') {
-                Notification.requestPermission();
-            }
+// 申请浏览器系统通知权限 (只有在开启了后台弹窗配置时才申请)
+if (localStorage.getItem('sys_bg_notification') === 'true' && 'Notification' in window && Notification.permission === 'default') {
+    Notification.requestPermission();
+}
 
-            // 发送系统通知方法 (增加了后台弹窗开关控制过滤)
-            const sendNotification = (title, body) => {
-                const isNotificationEnabled = localStorage.getItem('sys_bg_notification') === 'true';
-                if (isNotificationEnabled && 'serviceWorker' in navigator && navigator.serviceWorker.controller) {
-                    navigator.serviceWorker.controller.postMessage({
-                        type: 'SHOW_NOTIFICATION',
-                        title: title,
-                        body: body
-                    });
-                }
-            };
+// 发送系统通知方法 (使用更稳定的直接通知通道)
+const sendNotification = (title, body) => {
+    const isNotificationEnabled = localStorage.getItem('sys_bg_notification') === 'true';
+    if (isNotificationEnabled && 'Notification' in window && Notification.permission === 'granted') {
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.ready.then(reg => {
+                reg.showNotification(title, {
+                    body: body,
+                    icon: 'https://cdn-icons-png.flaticon.com/512/3670/3670044.png',
+                    badge: 'https://cdn-icons-png.flaticon.com/512/3670/3670044.png',
+                    vibrate: [200, 100, 200],
+                    tag: 'msg-' + Date.now()
+                });
+            });
+        } else {
+            new Notification(title, {
+                body: body,
+                icon: 'https://cdn-icons-png.flaticon.com/512/3670/3670044.png'
+            });
+        }
+    }
+};
 
             // 注册 SW 并启动 15 秒间隔的心跳保活 (增加了后台保活开关判定)
             if ('serviceWorker' in navigator) {
@@ -1014,17 +1025,32 @@
             });
 
             // 监听数据持久化
-            watch([friends, chatHistory, emojis, presets, apiConfig], () => {
-                localStorage.setItem('chat_friends', JSON.stringify(friends.value));
-                localStorage.setItem('chat_history', JSON.stringify(chatHistory.value));
-                localStorage.setItem('chat_emojis', JSON.stringify(emojis.value));
-                localStorage.setItem('chat_presets', JSON.stringify(presets.value));
-                localStorage.setItem('global_api_endpoint', apiConfig.value.endpoint);
-                localStorage.setItem('global_api_key', apiConfig.value.apiKey);
-                localStorage.setItem('global_api_model', apiConfig.value.selectedModel);
-            }, { deep: true });
+watch([friends, chatHistory, emojis, presets, apiConfig], () => {
+    localStorage.setItem('chat_friends', JSON.stringify(friends.value));
+    localStorage.setItem('chat_history', JSON.stringify(chatHistory.value));
+    localStorage.setItem('chat_emojis', JSON.stringify(emojis.value));
+    localStorage.setItem('chat_presets', JSON.stringify(presets.value));
+    localStorage.setItem('global_api_endpoint', apiConfig.value.endpoint);
+    localStorage.setItem('global_api_key', apiConfig.value.apiKey);
+    localStorage.setItem('global_api_model', apiConfig.value.selectedModel);
+}, { deep: true });
 
-            // Tab切换
+// 监听通知开关：当用户在设置里打开弹窗通知时，立刻向浏览器申请权限
+watch(bgNotification, (newVal) => {
+    if (newVal && 'Notification' in window) {
+        Notification.requestPermission().then(permission => {
+            if (permission !== 'granted') {
+                alert('您拒绝了通知权限，后台弹窗将运作失败。请在浏览器地址栏的设置中允许此网站发送通知。');
+                bgNotification.value = false;
+                localStorage.setItem('sys_bg_notification', 'false');
+            } else {
+                localStorage.setItem('sys_bg_notification', 'true');
+            }
+        });
+    }
+});
+
+// Tab切换
             const switchTab = (tab) => {
                 activeTab.value = tab;
                 chatCurrentView.value = 'list';
