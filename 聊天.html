@@ -93,34 +93,49 @@
 
         <!-- Header (对话视窗下的 Header) -->
         <header v-if="currentView === 'chat'" class="border-b border-white/30 text-stone-800 p-3 flex justify-between items-center shrink-0 glass-effect rounded-2xl mb-2">
-            <div class="flex items-center space-x-2 min-w-[60px]">
-                <!-- 返回按钮，如果在见面模式则退回线上聊天，在线上模式则退回列表 -->
-                <button @click="exitChatOrOffline" class="text-sm font-bold text-stone-600 hover:text-black">← 返回</button>
+            <div class="flex items-center space-x-2 min-w-[60px]" :style="{ opacity: activeFriend && activeFriend.headerBackOpacity !== undefined ? activeFriend.headerBackOpacity / 100 : 1.0 }">
+                <!-- 返回按钮 -->
+                <button @click="exitChatOrOffline" class="flex items-center">
+                    <img v-if="activeFriend && activeFriend.headerBackImg" :src="activeFriend.headerBackImg" class="h-6 object-contain" />
+                    <span v-else class="text-sm font-bold text-stone-600 hover:text-black">← 返回</span>
+                </button>
             </div>
             
-            <!-- 如果是线下见面模式，显示特殊的双头像顶部栏（加入 activeFriend 安全判断） -->
-            <div v-if="chatMode === 'offline' && activeFriend" class="flex items-center space-x-2">
-                <div class="flex items-center -space-x-2">
-                    <div class="w-8 h-8 rounded-full bg-stone-800 text-white flex items-center justify-center font-bold text-xs border-2 border-white shadow-sm">我</div>
-                    <div class="w-8 h-8 rounded-full bg-stone-300 text-stone-800 flex items-center justify-center font-bold text-xs border-2 border-white shadow-sm">
-                        {{ activeFriend.name ? activeFriend.name[0] : '' }}
+            <!-- 顶栏标题区 -->
+            <div :style="{ opacity: activeFriend && activeFriend.headerTitleOpacity !== undefined ? activeFriend.headerTitleOpacity / 100 : 1.0 }">
+                <img v-if="activeFriend && activeFriend.headerTitleImg" :src="activeFriend.headerTitleImg" class="h-8 object-contain mx-auto" />
+                <div v-else>
+                    <!-- 如果是线下见面模式，显示特殊的双头像顶部栏（加入 activeFriend 安全判断） -->
+                    <div v-if="chatMode === 'offline' && activeFriend" class="flex items-center space-x-2">
+                        <div class="flex items-center -space-x-2">
+                            <div class="w-8 h-8 rounded-full bg-stone-800 text-white flex items-center justify-center font-bold text-xs border-2 border-white shadow-sm">我</div>
+                            <div class="w-8 h-8 rounded-full bg-stone-300 text-stone-800 flex items-center justify-center font-bold text-xs border-2 border-white shadow-sm">
+                                {{ activeFriend.name ? activeFriend.name[0] : '' }}
+                            </div>
+                        </div>
+                        <!-- 顶部状态标题切换 -->
+                        <span v-if="offlineSubView === 'chat'" class="text-xs font-bold text-stone-700 bg-amber-100 px-2 py-0.5 rounded-full border border-amber-200">见面中: {{ activeFriend.name }}</span>
+                        <span v-else-if="offlineSubView === 'settings'" class="text-xs font-bold text-stone-700">线下设置</span>
+                        <span v-else-if="offlineSubView === 'style'" class="text-xs font-bold text-stone-700">文风设置</span>
+                        <span v-else-if="offlineSubView === 'openings'" class="text-xs font-bold text-stone-700">制作开场白</span>
                     </div>
+                    <h1 v-else class="text-base font-bold truncate px-2 text-center">{{ activeTabName }}</h1>
                 </div>
-                <!-- 顶部状态标题切换 -->
-                <span v-if="offlineSubView === 'chat'" class="text-xs font-bold text-stone-700 bg-amber-100 px-2 py-0.5 rounded-full border border-amber-200">见面中: {{ activeFriend.name }}</span>
-                <span v-else-if="offlineSubView === 'settings'" class="text-xs font-bold text-stone-700">线下设置</span>
-                <span v-else-if="offlineSubView === 'style'" class="text-xs font-bold text-stone-700">文风设置</span>
-                <span v-else-if="offlineSubView === 'openings'" class="text-xs font-bold text-stone-700">制作开场白</span>
             </div>
-            <h1 v-else class="text-base font-bold truncate px-2">{{ activeTabName }}</h1>
             
-            <div class="flex items-center justify-end min-w-[60px]">
+            <div class="flex items-center justify-end min-w-[60px]" :style="{ opacity: activeFriend && activeFriend.headerMoreOpacity !== undefined ? activeFriend.headerMoreOpacity / 100 : 1.0 }">
                 <!-- 仅在线上模式允许打开好友设置 -->
-                <button v-if="chatMode === 'online'" @click="showFriendSettings = true" class="text-xl">⚙️</button>
+                <button v-if="chatMode === 'online'" @click="showFriendSettings = true" class="flex items-center">
+                    <img v-if="activeFriend && activeFriend.headerMoreImg" :src="activeFriend.headerMoreImg" class="h-6 object-contain" />
+                    <span v-else class="text-xl">⚙️</span>
+                </button>
                 <!-- 线下见面模式右上角图标 -->
-                <div v-else-if="chatMode === 'offline'">
+                <div v-else-if="chatMode === 'offline' && activeFriend">
                     <!-- 处于线下主聊天页，点击设置图标进入设置页 -->
-                    <button v-if="offlineSubView === 'chat'" @click="offlineSubView = 'settings'" class="text-xl">⚙️</button>
+                    <button v-if="offlineSubView === 'chat'" @click="offlineSubView = 'settings'" class="flex items-center">
+                        <img v-if="activeFriend.headerMoreImg" :src="activeFriend.headerMoreImg" class="h-6 object-contain" />
+                        <span v-else class="text-xl">⚙️</span>
+                    </button>
                     <!-- 处于文风页面，显示上传按钮 -->
                     <button v-else-if="offlineSubView === 'style'" @click="triggerStyleUpload" class="text-lg" title="上传文风文件">📤</button>
                     <!-- 处于开场白页面，显示添加加号按钮 -->
@@ -212,7 +227,7 @@
                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5M12 17.25h8.25" /></svg>
                         </button>
                         <button class="hover:text-black transition">
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.114 5.636a9 9 0 010 12.728M16.463 8.288a5.25 5.25 0 010 7.424M6.75 8.25l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.01 9.01 0 012.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75z" /></svg>
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.114 5.636a9 9 0 010 12.728M16.463 8.288a5.25 5.25 0 010 7.424M6.75 8.25l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.01 9.01 0 012.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25(4.51) 8.25H6.75z" /></svg>
                         </button>
                     </div>
                 </div>
@@ -406,11 +421,20 @@
                     </div>
 
                     <div class="flex items-center space-x-2">
-                        <!-- 表情按钮改成的 ＋ 图标 -->
-                        <button @click="showPlusPanel = !showPlusPanel" class="text-xl w-8 h-8 rounded-full border border-stone-300 flex items-center justify-center font-bold text-stone-600 hover:bg-stone-100 transition">＋</button>
+                        <!-- 带有美化属性的 + 菜单按钮 -->
+                        <button @click="showPlusPanel = !showPlusPanel" :style="{ opacity: activeFriend && activeFriend.inputBarPlusOpacity !== undefined ? activeFriend.inputBarPlusOpacity / 100 : 1.0 }" class="flex items-center justify-center">
+                            <img v-if="activeFriend && activeFriend.inputBarPlusImg" :src="activeFriend.inputBarPlusImg" class="w-8 h-8 object-contain" />
+                            <span v-else class="text-xl w-8 h-8 rounded-full border border-stone-300 flex items-center justify-center font-bold text-stone-600 hover:bg-stone-100 transition">＋</span>
+                        </button>
+                        
                         <input v-model="userInput" @keyup.enter="handleBtnClick" type="text" class="flex-1 border rounded px-3 py-2 outline-none" placeholder="输入消息...">
-                        <button @click="handleBtnClick" :class="['px-4 py-2 rounded text-white transition', userInput ? 'bg-stone-800' : 'bg-stone-400']">
-                            {{ userInput ? '发送' : '续写' }}
+                        
+                        <!-- 带有美化属性的发送按钮 -->
+                        <button @click="handleBtnClick" 
+                                :style="{ opacity: activeFriend && activeFriend.inputBarSendOpacity !== undefined ? activeFriend.inputBarSendOpacity / 100 : 1.0 }"
+                                :class="(activeFriend && activeFriend.inputBarSendImg) ? 'flex items-center justify-center' : ['px-4 py-2 rounded text-white transition', userInput ? 'bg-stone-800' : 'bg-stone-400']">
+                            <img v-if="activeFriend && activeFriend.inputBarSendImg" :src="activeFriend.inputBarSendImg" class="h-10 object-contain" />
+                            <span v-else>{{ userInput ? '发送' : '续写' }}</span>
                         </button>
                     </div>
                 </div>
@@ -518,7 +542,7 @@
                             <div v-if="e.selected" class="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-4 h-4 text-[10px] flex items-center justify-center">✓</div>
                         </div>
                     </div>
-                    <p v-show="stickerSectionExpanded" class="text-[10px] text-gray-400 mt-2 text-center">点击表情包可多选，点击上方按钮删除</p>
+                    <p class="text-[10px] text-gray-400 mt-2 text-center">点击表情包可多选，点击上方按钮删除</p>
                 </section>
 
                 <!-- 钱包入口 -->
@@ -586,7 +610,7 @@
                         <span>来自: {{ fav.from }}</span>
                         <span>{{ fav.time }}</span>
                     </div>
-                    <div class="text-xs text-stone-805 leading-relaxed whitespace-pre-wrap">{{ fav.text }}</div>
+                    <div class="text-xs text-stone-855 leading-relaxed whitespace-pre-wrap">{{ fav.text }}</div>
                     <div class="text-right">
                         <button @click="deleteFavorite(favorites.length - 1 - idx)" class="text-[10px] text-red-500 font-bold hover:text-red-700 transition">删除</button>
                     </div>
@@ -609,7 +633,7 @@
                             <span class="font-semibold text-stone-600">应用给此角色</span>
                         </label>
                     </div>
-                    <p class="text-xs text-stone-500 line-clamp-3 italic">{{ wv.content }}</p>
+                    <p class="text-xs text-stone-505 line-clamp-3 italic">{{ wv.content }}</p>
                     <div class="flex justify-end space-x-3 pt-2 border-t border-stone-100">
                         <button @click="editWorldview(wv)" class="text-xs text-stone-600 font-bold hover:text-black">编辑</button>
                         <button @click="deleteWorldview(wv.id)" class="text-xs text-red-500 font-bold hover:text-red-700">删除</button>
@@ -705,6 +729,18 @@
                     <div class="border-t pt-3">
                         <button @click="forceTriggerMoment(activeFriend)" class="w-full p-2.5 bg-stone-100 text-stone-700 rounded-xl border border-stone-200 hover:bg-stone-200/50 text-xs font-semibold transition">
                             ✨ 强制让此 AI 发一条朋友圈
+                        </button>
+                    </div>
+                    <!-- 新增的三个美化设置入口按钮 -->
+                    <div class="border-t pt-3 space-y-2">
+                        <button @click="showBubbleEditorModal = true; showFriendSettings = false" class="w-full p-2.5 bg-stone-100 text-stone-700 rounded-xl border border-stone-200 hover:bg-stone-200/50 text-xs font-semibold transition">
+                            🎨 气泡 CSS 美化
+                        </button>
+                        <button @click="showHeaderBeautifyModal = true; showFriendSettings = false" class="w-full p-2.5 bg-stone-100 text-stone-700 rounded-xl border border-stone-200 hover:bg-stone-200/50 text-xs font-semibold transition">
+                            ✨ 顶栏美化
+                        </button>
+                        <button @click="showInputBarBeautifyModal = true; showFriendSettings = false" class="w-full p-2.5 bg-stone-100 text-stone-700 rounded-xl border border-stone-200 hover:bg-stone-200/50 text-xs font-semibold transition">
+                            🛠️ 底栏美化
                         </button>
                     </div>
                 </div>
@@ -818,7 +854,7 @@
                 <textarea v-model="emojiInputText" rows="6" class="w-full border p-2 mb-4 rounded-xl text-sm outline-none" placeholder="开心:https://...&#10;难过:https://..."></textarea>
                 <div class="flex space-x-2">
                     <button @click="showEmojiImportModal = false" class="flex-1 p-2 bg-gray-200 rounded-xl">取消</button>
-                    <button @click="importEmojis" class="flex-1 p-2 bg-stone-800 text-white rounded-xl">确认导入</button>
+                    <button @click="importEmojis" class="flex-1 p-2 bg-stone-850 text-white rounded-xl">确认导入</button>
                 </div>
             </div>
         </div>
@@ -973,7 +1009,7 @@
                         <div class="w-8 h-8 rounded-full bg-stone-100 flex items-center justify-center text-stone-600 font-bold text-xs border border-stone-200">
                             {{ friend.name[0] }}
                         </div>
-                        <span class="font-bold text-stone-800 text-xs">{{ friend.name }}</span>
+                        <span class="font-bold text-stone-805 text-xs">{{ friend.name }}</span>
                     </div>
                     <div :class="['w-5 h-5 rounded-full border-2 flex items-center justify-center transition', tempVisibleFriends.includes(friend.name) ? 'bg-stone-800 border-stone-800 text-white' : 'border-gray-400']">
                         <span v-if="tempVisibleFriends.includes(friend.name)" class="text-[10px] font-bold">✓</span>
@@ -1035,6 +1071,103 @@
                 </div>
             </div>
         </div>
+        <!-- 1. 弹窗：气泡 CSS 美化 -->
+        <div v-if="showBubbleEditorModal" class="absolute inset-0 bg-black/50 flex items-center justify-center p-6 z-[80]">
+            <div class="bg-white rounded-2xl w-full p-5 shadow-xl max-h-[90%] overflow-y-auto space-y-4">
+                <h3 class="font-bold text-stone-850">气泡 CSS 美化</h3>
+                <p class="text-[10px] text-stone-400">输入自定义的 CSS 控制聊天气泡外观。<br>例如：.msg.friend .bubble { background: red; }</p>
+                <textarea v-model="activeFriend.bubbleCss" rows="10" class="w-full border p-2.5 rounded-xl text-xs outline-none focus:border-stone-500 bg-stone-50/50 font-mono" placeholder="/* 在此输入气泡 CSS 代码 */"></textarea>
+                <div class="flex space-x-2">
+                    <button @click="showBubbleEditorModal = false; showFriendSettings = true" class="flex-1 p-2.5 bg-gray-200 rounded-xl text-stone-600 font-medium">取消</button>
+                    <button @click="saveBubbleCss" class="flex-1 p-2.5 bg-stone-800 text-white rounded-xl font-medium">保存</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. 弹窗：顶栏美化 -->
+        <div v-if="showHeaderBeautifyModal" class="absolute inset-0 bg-black/50 flex items-center justify-center p-6 z-[80]">
+            <div class="bg-white rounded-2xl w-full p-5 shadow-xl max-h-[90%] overflow-y-auto space-y-4">
+                <h3 class="font-bold text-stone-850">顶栏美化</h3>
+                
+                <!-- 切换 Tabs -->
+                <div class="flex bg-stone-100 rounded-xl p-1 text-xs">
+                    <button @click="hbActiveTab = 'bg'" :class="['flex-1 py-1.5 rounded-lg text-center', hbActiveTab === 'bg' ? 'bg-white font-bold shadow-sm' : 'text-stone-500']">背景</button>
+                    <button @click="hbActiveTab = 'back'" :class="['flex-1 py-1.5 rounded-lg text-center', hbActiveTab === 'back' ? 'bg-white font-bold shadow-sm' : 'text-stone-500']">返回键</button>
+                    <button @click="hbActiveTab = 'title'" :class="['flex-1 py-1.5 rounded-lg text-center', hbActiveTab === 'title' ? 'bg-white font-bold shadow-sm' : 'text-stone-500']">标题区</button>
+                    <button @click="hbActiveTab = 'more'" :class="['flex-1 py-1.5 rounded-lg text-center', hbActiveTab === 'more' ? 'bg-white font-bold shadow-sm' : 'text-stone-500']">设置键</button>
+                </div>
+
+                <!-- 各种配置 -->
+                <div class="space-y-3">
+                    <div class="flex justify-between items-center text-xs">
+                        <span class="text-stone-600">透明度</span>
+                        <span class="font-bold text-stone-800">{{ getHbOpacity() }}%</span>
+                    </div>
+                    <input type="range" min="0" max="100" :value="getHbOpacity()" @input="updateHbOpacity" class="w-full accent-stone-800">
+                    
+                    <div class="flex space-x-2">
+                        <button @click="triggerHeaderUpload" class="flex-1 py-2 bg-stone-100 border border-stone-200 text-stone-700 rounded-xl text-xs font-semibold">相册上传</button>
+                        <button @click="triggerHeaderUrl" class="flex-1 py-2 bg-stone-100 border border-stone-200 text-stone-700 rounded-xl text-xs font-semibold">输入 URL</button>
+                    </div>
+                    <button @click="clearHeaderImg" class="w-full py-2 bg-red-50 text-red-500 rounded-xl text-xs font-semibold">清除图片</button>
+                </div>
+
+                <!-- CSS 编辑区 -->
+                <div class="space-y-1.5">
+                    <label class="block text-xs font-bold text-stone-600">顶栏 CSS 代码</label>
+                    <textarea v-model="activeFriend.headerCss" rows="4" class="w-full border p-2.5 rounded-xl text-xs outline-none focus:border-stone-500 bg-stone-50/50 font-mono" placeholder="/* 顶栏 CSS */"></textarea>
+                </div>
+
+                <div class="flex space-x-2">
+                    <button @click="showHeaderBeautifyModal = false; showFriendSettings = true" class="flex-1 p-2.5 bg-gray-200 rounded-xl text-stone-600 font-medium">取消</button>
+                    <button @click="saveHeaderBeautify" class="flex-1 p-2.5 bg-stone-800 text-white rounded-xl font-medium">保存</button>
+                </div>
+            </div>
+        </div>
+        <input type="file" ref="headerFileInput" class="hidden" accept="image/*" @change="handleHeaderUpload">
+
+        <!-- 3. 弹窗：底栏美化 -->
+        <div v-if="showInputBarBeautifyModal" class="absolute inset-0 bg-black/50 flex items-center justify-center p-6 z-[80]">
+            <div class="bg-white rounded-2xl w-full p-5 shadow-xl max-h-[90%] overflow-y-auto space-y-4">
+                <h3 class="font-bold text-stone-850">底栏美化</h3>
+                
+                <!-- 切换 Tabs -->
+                <div class="flex bg-stone-100 rounded-xl p-1 text-xs">
+                    <button @click="ibActiveTab = 'bg'" :class="['flex-1 py-1.5 rounded-lg text-center', ibActiveTab === 'bg' ? 'bg-white font-bold shadow-sm' : 'text-stone-500']">背景</button>
+                    <button @click="ibActiveTab = 'plus'" :class="['flex-1 py-1.5 rounded-lg text-center', ibActiveTab === 'plus' ? 'bg-white font-bold shadow-sm' : 'text-stone-500']">加号键</button>
+                    <button @click="ibActiveTab = 'send'" :class="['flex-1 py-1.5 rounded-lg text-center', ibActiveTab === 'send' ? 'bg-white font-bold shadow-sm' : 'text-stone-500']">发送键</button>
+                </div>
+
+                <!-- 各种配置 -->
+                <div class="space-y-3">
+                    <div class="flex justify-between items-center text-xs">
+                        <span class="text-stone-600">透明度</span>
+                        <span class="font-bold text-stone-800">{{ getIbOpacity() }}%</span>
+                    </div>
+                    <input type="range" min="0" max="100" :value="getIbOpacity()" @input="updateIbOpacity" class="w-full accent-stone-800">
+                    
+                    <div class="flex space-x-2">
+                        <button @click="triggerInputBarUpload" class="flex-1 py-2 bg-stone-100 border border-stone-200 text-stone-700 rounded-xl text-xs font-semibold">相册上传</button>
+                        <button @click="triggerInputBarUrl" class="flex-1 py-2 bg-stone-100 border border-stone-200 text-stone-700 rounded-xl text-xs font-semibold">输入 URL</button>
+                    </div>
+                    <button @click="clearInputBarImg" class="w-full py-2 bg-red-50 text-red-500 rounded-xl text-xs font-semibold">清除图片</button>
+                </div>
+
+                <!-- CSS 编辑区 -->
+                <div class="space-y-1.5">
+                    <label class="block text-xs font-bold text-stone-600">底栏 CSS 代码</label>
+                    <textarea v-model="activeFriend.inputBarCss" rows="4" class="w-full border p-2.5 rounded-xl text-xs outline-none focus:border-stone-500 bg-stone-50/50 font-mono" placeholder="/* 底栏 CSS */"></textarea>
+                </div>
+
+                <div class="flex space-x-2">
+                    <button @click="showInputBarBeautifyModal = false; showFriendSettings = true" class="flex-1 p-2.5 bg-gray-200 rounded-xl text-stone-600 font-medium">取消</button>
+                    <button @click="saveInputBarBeautify" class="flex-1 p-2.5 bg-stone-800 text-white rounded-xl font-medium">保存</button>
+                </div>
+            </div>
+        </div>
+        <input type="file" ref="inputBarFileInput" class="hidden" accept="image/*" @change="handleInputBarUpload">
+
+        </div>
 
     </div>
 
@@ -1061,6 +1194,15 @@
                 const chatMode = ref('online'); // online (线上常规) 或 offline (线下见面)
                 const offlineSubView = ref('chat'); // chat (聊天) 或 settings (设置) 或 style (文风) 或 openings (开场白)
                 const offlineChatHistory = ref(JSON.parse(localStorage.getItem('chat_offline_history') || '{}'));
+
+                // 新增：美化配置状态
+                const showBubbleEditorModal = ref(false);
+                const showHeaderBeautifyModal = ref(false);
+                const showInputBarBeautifyModal = ref(false);
+                const hbActiveTab = ref('bg');
+                const ibActiveTab = ref('bg');
+                const headerFileInput = ref(null);
+                const inputBarFileInput = ref(null);
                 
                 // 线下模式特有：文风和开场白状态数据
                 const newStyleContent = ref('');
@@ -1733,7 +1875,7 @@ ${wvPrompt}${mapPrompt}${stylePrompt}
                         const now = new Date();
                         const hours = now.getHours();
                         const minutes = now.getMinutes().toString().padStart(2, '0');
-                        const dayNames = ["星期日", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六"];
+                        const dayNames = ["星期日", "星期1", "星期二", "星期三", "星期四", "星期五", "星期六"];
                         const dayName = dayNames[now.getDay()];
 
                         let timePhase = "";
@@ -2198,7 +2340,7 @@ ${wvPrompt}${mapPrompt}${timePrompt}${rechargePrompt}
                                 promptText = `内容：“${m.text}”。`;
                             }
 
-                            const sysPrompt = `# Role\n模拟[${f.name}]，人设：${f.persona}。\n聊天记录：\n${historyLogs || "无"}\n\n# 任务\n写一条简短的朋友圈评论（15字内，且不要包含任何解释词句）。禁止AI礼貌腔。`;
+                            const sysPrompt = `# Role\n模拟[${f.name}]，人设：${f.persona}。\n聊天记录：\n${h || "无"}\n\n# 任务\n写一条简短的朋友圈评论（15字内，且不要包含任何解释词句）。禁止AI礼貌腔。`;
 
                             try {
                                 const res = await fetch(`${cleanBaseUrl}/chat/completions`, {
@@ -2457,6 +2599,230 @@ ${wvPrompt}${mapPrompt}${timePrompt}${rechargePrompt}
                     }
                 };
 
+                // 新增：气泡、顶栏、底栏样式动态注入逻辑
+                const injectStyles = () => {
+                    if (!activeFriend.value) return;
+
+                    // 1. 气泡 CSS 注入
+                    let bubbleStyle = document.getElementById('custom-bubble-style');
+                    if (!bubbleStyle) {
+                        bubbleStyle = document.createElement('style');
+                        bubbleStyle.id = 'custom-bubble-style';
+                        document.head.appendChild(bubbleStyle);
+                    }
+                    bubbleStyle.innerHTML = activeFriend.value.bubbleCss || '';
+
+                    // 2. 顶栏 CSS 与背景图注入
+                    let headerStyle = document.getElementById('custom-header-style');
+                    if (!headerStyle) {
+                        headerStyle = document.createElement('style');
+                        headerStyle.id = 'custom-header-style';
+                        document.head.appendChild(headerStyle);
+                    }
+                    let headerCssString = activeFriend.value.headerCss || '';
+                    if (activeFriend.value.headerBgImg) {
+                        const opacity = (activeFriend.value.headerBgOpacity !== undefined ? activeFriend.value.headerBgOpacity : 100) / 100;
+                        headerCssString += `
+                            #app header {
+                                position: relative !important;
+                                z-index: 10 !important;
+                                background: transparent !important;
+                            }
+                            #app header::before {
+                                content: "" !important;
+                                position: absolute !important;
+                                top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important;
+                                background-image: url("${activeFriend.value.headerBgImg}") !important;
+                                background-size: cover !important;
+                                background-position: center !important;
+                                opacity: ${opacity} !important;
+                                z-index: -1 !important;
+                                pointer-events: none !important;
+                                border-radius: 16px !important;
+                            }
+                        `;
+                    }
+                    headerStyle.innerHTML = headerCssString;
+
+                    // 3. 底栏 CSS 与背景图注入
+                    let inputBarStyle = document.getElementById('custom-inputbar-style');
+                    if (!inputBarStyle) {
+                        inputBarStyle = document.createElement('style');
+                        inputBarStyle.id = 'custom-inputbar-style';
+                        document.head.appendChild(inputBarStyle);
+                    }
+                    let inputBarCssString = activeFriend.value.inputBarCss || '';
+                    if (activeFriend.value.inputBarBgImg) {
+                        const opacity = (activeFriend.value.inputBarBgOpacity !== undefined ? activeFriend.value.inputBarBgOpacity : 100) / 100;
+                        inputBarCssString += `
+                            #app main + div, #app .p-2.bg-white\\/90, #app .p-3.bg-stone-50 {
+                                position: relative !important;
+                                z-index: 10 !important;
+                                background: transparent !important;
+                            }
+                            #app main + div::before, #app .p-2.bg-white\\/90::before, #app .p-3.bg-stone-50::before {
+                                content: "" !important;
+                                position: absolute !important;
+                                top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important;
+                                background-image: url("${activeFriend.value.inputBarBgImg}") !important;
+                                background-size: cover !important;
+                                background-position: center !important;
+                                opacity: ${opacity} !important;
+                                z-index: -1 !important;
+                            }
+                        `;
+                    }
+                    inputBarStyle.innerHTML = inputBarCssString;
+                };
+
+                // 监听当前聊天好友的变化，自动应用对应好友的样式
+                watch(activeFriend, () => {
+                    injectStyles();
+                }, { immediate: true });
+
+                const saveBubbleCss = () => {
+                    injectStyles();
+                    showBubbleEditorModal.value = false;
+                    showFriendSettings.value = true;
+                };
+
+                // 顶栏美化数据管理
+                const getHbOpacity = () => {
+                    if (!activeFriend.value) return 100;
+                    const tab = hbActiveTab.value;
+                    if (tab === 'bg') return activeFriend.value.headerBgOpacity !== undefined ? activeFriend.value.headerBgOpacity : 100;
+                    if (tab === 'back') return activeFriend.value.headerBackOpacity !== undefined ? activeFriend.value.headerBackOpacity : 100;
+                    if (tab === 'title') return activeFriend.value.headerTitleOpacity !== undefined ? activeFriend.value.headerTitleOpacity : 100;
+                    if (tab === 'more') return activeFriend.value.headerMoreOpacity !== undefined ? activeFriend.value.headerMoreOpacity : 100;
+                    return 100;
+                };
+
+                const updateHbOpacity = (event) => {
+                    if (!activeFriend.value) return;
+                    const val = parseInt(event.target.value);
+                    const tab = hbActiveTab.value;
+                    if (tab === 'bg') activeFriend.value.headerBgOpacity = val;
+                    if (tab === 'back') activeFriend.value.headerBackOpacity = val;
+                    if (tab === 'title') activeFriend.value.headerTitleOpacity = val;
+                    if (tab === 'more') activeFriend.value.headerMoreOpacity = val;
+                    injectStyles();
+                };
+
+                const triggerHeaderUpload = () => {
+                    headerFileInput.value.click();
+                };
+
+                const handleHeaderUpload = (event) => {
+                    const file = event.target.files[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        if (!activeFriend.value) return;
+                        const tab = hbActiveTab.value;
+                        if (tab === 'bg') activeFriend.value.headerBgImg = e.target.result;
+                        if (tab === 'back') activeFriend.value.headerBackImg = e.target.result;
+                        if (tab === 'title') activeFriend.value.headerTitleImg = e.target.result;
+                        if (tab === 'more') activeFriend.value.headerMoreImg = e.target.result;
+                        injectStyles();
+                    };
+                    reader.readAsDataURL(file);
+                };
+
+                const triggerHeaderUrl = () => {
+                    const url = prompt("请输入图片链接 URL:");
+                    if (url) {
+                        if (!activeFriend.value) return;
+                        const tab = hbActiveTab.value;
+                        if (tab === 'bg') activeFriend.value.headerBgImg = url;
+                        if (tab === 'back') activeFriend.value.headerBackImg = url;
+                        if (tab === 'title') activeFriend.value.headerTitleImg = url;
+                        if (tab === 'more') activeFriend.value.headerMoreImg = url;
+                        injectStyles();
+                    }
+                };
+
+                const clearHeaderImg = () => {
+                    if (!activeFriend.value) return;
+                    const tab = hbActiveTab.value;
+                    if (tab === 'bg') activeFriend.value.headerBgImg = null;
+                    if (tab === 'back') activeFriend.value.headerBackImg = null;
+                    if (tab === 'title') activeFriend.value.headerTitleImg = null;
+                    if (tab === 'more') activeFriend.value.headerMoreImg = null;
+                    injectStyles();
+                };
+
+                const saveHeaderBeautify = () => {
+                    injectStyles();
+                    showHeaderBeautifyModal.value = false;
+                    showFriendSettings.value = true;
+                };
+
+                // 底栏美化数据管理
+                const getIbOpacity = () => {
+                    if (!activeFriend.value) return 100;
+                    const tab = ibActiveTab.value;
+                    if (tab === 'bg') return activeFriend.value.inputBarBgOpacity !== undefined ? activeFriend.value.inputBarBgOpacity : 100;
+                    if (tab === 'plus') return activeFriend.value.inputBarPlusOpacity !== undefined ? activeFriend.value.inputBarPlusOpacity : 100;
+                    if (tab === 'send') return activeFriend.value.inputBarSendOpacity !== undefined ? activeFriend.value.inputBarSendOpacity : 100;
+                    return 100;
+                };
+
+                const updateIbOpacity = (event) => {
+                    if (!activeFriend.value) return;
+                    const val = parseInt(event.target.value);
+                    const tab = ibActiveTab.value;
+                    if (tab === 'bg') activeFriend.value.inputBarBgOpacity = val;
+                    if (tab === 'plus') activeFriend.value.inputBarPlusOpacity = val;
+                    if (tab === 'send') activeFriend.value.inputBarSendOpacity = val;
+                    injectStyles();
+                };
+
+                const triggerInputBarUpload = () => {
+                    inputBarFileInput.value.click();
+                };
+
+                const handleInputBarUpload = (event) => {
+                    const file = event.target.files[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        if (!activeFriend.value) return;
+                        const tab = ibActiveTab.value;
+                        if (tab === 'bg') activeFriend.value.inputBarBgImg = e.target.result;
+                        if (tab === 'plus') activeFriend.value.inputBarPlusImg = e.target.result;
+                        if (tab === 'send') activeFriend.value.inputBarSendImg = e.target.result;
+                        injectStyles();
+                    };
+                    reader.readAsDataURL(file);
+                };
+
+                const triggerInputBarUrl = () => {
+                    const url = prompt("请输入图片链接 URL:");
+                    if (url) {
+                        if (!activeFriend.value) return;
+                        const tab = ibActiveTab.value;
+                        if (tab === 'bg') activeFriend.value.inputBarBgImg = url;
+                        if (tab === 'plus') activeFriend.value.inputBarPlusImg = url;
+                        if (tab === 'send') activeFriend.value.inputBarSendImg = url;
+                        injectStyles();
+                    }
+                };
+
+                const clearInputBarImg = () => {
+                    if (!activeFriend.value) return;
+                    const tab = ibActiveTab.value;
+                    if (tab === 'bg') activeFriend.value.inputBarBgImg = null;
+                    if (tab === 'plus') activeFriend.value.inputBarPlusImg = null;
+                    if (tab === 'send') activeFriend.value.inputBarSendImg = null;
+                    injectStyles();
+                };
+
+                const saveInputBarBeautify = () => {
+                    injectStyles();
+                    showInputBarBeautifyModal.value = false;
+                    showFriendSettings.value = true;
+                };
+
 // 新增：在聊天室中发送系统后台通知弹窗方法
 const sendNotification = (title, body) => {
     const isNotificationEnabled = localStorage.getItem('sys_bg_notification') === 'true';
@@ -2500,6 +2866,14 @@ const sendNotification = (title, body) => {
                 }
 
                 return {
+                    // 暴露美化设置变量与方法
+                    showBubbleEditorModal, showHeaderBeautifyModal, showInputBarBeautifyModal,
+                    hbActiveTab, ibActiveTab, headerFileInput, inputBarFileInput,
+                    saveBubbleCss, getHbOpacity, updateHbOpacity, triggerHeaderUpload,
+                    handleHeaderUpload, triggerHeaderUrl, clearHeaderImg, saveHeaderBeautify,
+                    getIbOpacity, updateIbOpacity, triggerInputBarUpload, handleInputBarUpload,
+                    triggerInputBarUrl, clearInputBarImg, saveInputBarBeautify,
+
                     // 暴露地图数据
                     maps,
                     // 暴露出世界观数据和操作方法
