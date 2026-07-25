@@ -47,28 +47,6 @@
         .animate-fade-in {
             animation: fadeIn 0.15s ease-out forwards;
         }
-
-        /* 悬浮球样式 */
-        #floating-ball {
-            position: fixed !important;
-            z-index: 99999 !important;
-            cursor: move !important;
-            width: 50px !important;
-            height: 50px !important;
-            background: radial-gradient(circle, #ffffff 0%, #ffffff 25%, #b3b3b3 26%, #b3b3b3 45%, #4d4d4d 46%, #4d4d4d 70%, #1a1a1a 71%, #1a1a1a 100%) !important;
-            border-radius: 50% !important;
-            transform: none !important;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(0, 0, 0, 0.1) !important;
-            border: none !important;
-            display: flex !important;
-            align-items: center;
-            justify-content: center;
-            touch-action: none !important;
-            transition: opacity 0.2s ease;
-        }
-        #floating-ball:active {
-            opacity: 0.8 !important;
-        }
     </style>
 </head>
 <body class="h-screen flex justify-center overflow-hidden text-gray-800 font-sans">
@@ -1504,12 +1482,8 @@
                 <input type="text" v-model="petInput" class="flex-1 rounded-full border-none px-3 py-1 text-[11px] outline-none bg-white text-stone-805" placeholder="聊聊剧情..." @keyup.enter="sendPetMsg">
                 <button class="bg-[#07c160] text-white border-none w-12 h-8 rounded-full text-[11px] shrink-0 font-medium" @click="sendPetMsg">发送</button>
             </div>
-
         </div>
     </div>
-
-    <!-- 悬浮返回球 -->
-    <div id="floating-ball" @click="backToHome"></div>
 
     </div>
 
@@ -3813,26 +3787,20 @@ const sendPetMsg = async () => {
     // 调用AI生成
     await getAIResponse();
     
-        // 从最新消息历史回显最新AI的吐槽
-        const history = chatHistory.value[fId];
-        const aiMsgs = history.filter(m => m.role === 'assistant');
-        if (aiMsgs.length > 0) {
-            petBubbleText.value = aiMsgs[aiMsgs.length - 1].content;
-        }
-    };
+    // 从最新消息历史回显最新AI的吐槽
+    const history = chatHistory.value[fId];
+    const aiMsgs = history.filter(m => m.role === 'assistant');
+    if (aiMsgs.length > 0) {
+        petBubbleText.value = aiMsgs[aiMsgs.length - 1].content;
+    }
+};
 
-    // 返回手机主屏幕函数
-    const backToHome = () => {
-        window.location.href = 'index.html';
-    };
-
-    return {
-        // 注册新添加的方法和变量，使其在 HTML 中生效
-        backToHome,
-        showPlusEmoji,
-        handleTransfer,
-        handleRedPacket,
-        sendUserVoice,
+return {
+    // 注册新添加的方法和变量，使其在 HTML 中生效
+    showPlusEmoji,
+    handleTransfer,
+    handleRedPacket,
+    sendUserVoice,
     
     // 状态栏与背包功能
     newItemName,
@@ -3920,92 +3888,6 @@ const sendPetMsg = async () => {
         }).mount('#app');
     </script>
 
-<script>
-    (function() {
-        const ball = document.getElementById('floating-ball');
-        if (!ball) return;
-        // 从本地存储读取之前拖拽保存的位置
-        const savedX = localStorage.getItem('fb_x');
-        const savedY = localStorage.getItem('fb_y');
-        if (savedX !== null && savedY !== null) {
-            ball.style.left = savedX + 'px';
-            ball.style.top = savedY + 'px';
-            ball.style.right = 'auto';
-            ball.style.bottom = 'auto';
-        } else {
-            ball.style.bottom = '110px';
-            ball.style.right = '20px';
-            ball.style.left = 'auto';
-            ball.style.top = 'auto';
-        }
-        let isDragging = false;
-        let startX = 0, startY = 0;
-        let initialLeft = 0, initialTop = 0;
-        let active = false;
-        function dragStart(clientX, clientY) {
-            isDragging = false;
-            const rect = ball.getBoundingClientRect();
-            ball.style.left = rect.left + 'px';
-            ball.style.top = rect.top + 'px';
-            ball.style.right = 'auto';
-            ball.style.bottom = 'auto';
-            initialLeft = rect.left;
-            initialTop = rect.top;
-            startX = clientX;
-            startY = clientY;
-        }
-        function dragMove(clientX, clientY) {
-            const dx = clientX - startX;
-            const dy = clientY - startY;
-            if (Math.abs(dx) > 5 || Math.abs(dy) > 5) {
-                isDragging = true;
-            }
-            if (isDragging) {
-                let newLeft = initialLeft + dx;
-                let newTop = initialTop + dy;
-                const maxLeft = window.innerWidth - ball.offsetWidth;
-                const maxTop = window.innerHeight - ball.offsetHeight;
-                newLeft = Math.max(0, Math.min(newLeft, maxLeft));
-                newTop = Math.max(0, Math.min(newTop, maxTop));
-                ball.style.left = newLeft + 'px';
-                ball.style.top = newTop + 'px';
-                localStorage.setItem('fb_x', newLeft);
-                localStorage.setItem('fb_y', newTop);
-            }
-        }
-        ball.addEventListener('touchstart', function(e) {
-            dragStart(e.touches[0].clientX, e.touches[0].clientY);
-        }, { passive: true });
-        ball.addEventListener('touchmove', function(e) {
-            if (e.cancelable) e.preventDefault();
-            dragMove(e.touches[0].clientX, e.touches[0].clientY);
-        }, { passive: false });
-        ball.addEventListener('touchend', function(e) {
-            if (isDragging) {
-                e.preventDefault();
-            }
-        }, { passive: false });
-        ball.addEventListener('mousedown', function(e) {
-            active = true;
-            dragStart(e.clientX, e.clientY);
-        });
-        document.addEventListener('mousemove', function(e) {
-            if (!active) return;
-            dragMove(e.clientX, e.clientY);
-        });
-        document.addEventListener('mouseup', function(e) {
-            if (!active) return;
-            active = false;
-        });
-        ball.addEventListener('click', function(e) {
-            if (isDragging) {
-                e.stopImmediatePropagation();
-                e.preventDefault();
-            }
-        }, true);
-    })();
-</script>
-
     <style>
         @keyframes slide-up {
             from { transform: translateY(100%); }
@@ -4016,3 +3898,4 @@ const sendPetMsg = async () => {
         }
     </style>
 </body>
+</html>

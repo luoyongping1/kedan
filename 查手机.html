@@ -264,26 +264,6 @@
             font-size: 13px; color: #666; background: #f9f9f9; padding: 10px; 
             border-radius: 10px; line-height: 1.4; border-left: 3px solid #ddd;
         }
-        #floating-ball {
-            position: fixed !important;
-            z-index: 99999 !important;
-            cursor: move !important;
-            width: 50px !important;
-            height: 50px !important;
-            background: radial-gradient(circle, #ffffff 0%, #ffffff 25%, #b3b3b3 26%, #b3b3b3 45%, #4d4d4d 46%, #4d4d4d 70%, #1a1a1a 71%, #1a1a1a 100%) !important;
-            border-radius: 50% !important;
-            transform: none !important;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(0, 0, 0, 0.1) !important;
-            border: none !important;
-            display: flex !important;
-            align-items: center;
-            justify-content: center;
-            touch-action: none !important;
-            transition: opacity 0.2s ease;
-        }
-        #floating-ball:active {
-            opacity: 0.8 !important;
-        }
     </style>
 </head>
 <body oncontextmenu="return false;">
@@ -1093,94 +1073,6 @@ async function refreshMood() {
         if (content) document.getElementById('mood-text').innerText = content;
     } catch (e) {}
 }
-</script>
-
-<!-- 悬浮返回球 -->
-<div id="floating-ball" onclick="window.location.href='index.html'"></div>
-
-<script>
-    (function() {
-        const ball = document.getElementById('floating-ball');
-        if (!ball) return;
-        const savedX = localStorage.getItem('fb_x');
-        const savedY = localStorage.getItem('fb_y');
-        if (savedX !== null && savedY !== null) {
-            ball.style.left = savedX + 'px';
-            ball.style.top = savedY + 'px';
-            ball.style.right = 'auto';
-            ball.style.bottom = 'auto';
-        } else {
-            ball.style.bottom = '110px';
-            ball.style.right = '20px';
-            ball.style.left = 'auto';
-            ball.style.top = 'auto';
-        }
-        let isDragging = false;
-        let startX = 0, startY = 0;
-        let initialLeft = 0, initialTop = 0;
-        let active = false;
-        function dragStart(clientX, clientY) {
-            isDragging = false;
-            const rect = ball.getBoundingClientRect();
-            ball.style.left = rect.left + 'px';
-            ball.style.top = rect.top + 'px';
-            ball.style.right = 'auto';
-            ball.style.bottom = 'auto';
-            initialLeft = rect.left;
-            initialTop = rect.top;
-            startX = clientX;
-            startY = clientY;
-        }
-        function dragMove(clientX, clientY) {
-            const dx = clientX - startX;
-            const dy = clientY - startY;
-            if (Math.abs(dx) > 5 || Math.abs(dy) > 5) {
-                isDragging = true;
-            }
-            if (isDragging) {
-                let newLeft = initialLeft + dx;
-                let newTop = initialTop + dy;
-                const maxLeft = window.innerWidth - ball.offsetWidth;
-                const maxTop = window.innerHeight - ball.offsetHeight;
-                newLeft = Math.max(0, Math.min(newLeft, maxLeft));
-                newTop = Math.max(0, Math.min(newTop, maxTop));
-                ball.style.left = newLeft + 'px';
-                ball.style.top = newTop + 'px';
-                localStorage.setItem('fb_x', newLeft);
-                localStorage.setItem('fb_y', newTop);
-            }
-        }
-        ball.addEventListener('touchstart', function(e) {
-            dragStart(e.touches[0].clientX, e.touches[0].clientY);
-        }, { passive: true });
-        ball.addEventListener('touchmove', function(e) {
-            if (e.cancelable) e.preventDefault();
-            dragMove(e.touches[0].clientX, e.touches[0].clientY);
-        }, { passive: false });
-        ball.addEventListener('touchend', function(e) {
-            if (isDragging) {
-                e.preventDefault();
-            }
-        }, { passive: false });
-        ball.addEventListener('mousedown', function(e) {
-            active = true;
-            dragStart(e.clientX, e.clientY);
-        });
-        document.addEventListener('mousemove', function(e) {
-            if (!active) return;
-            dragMove(e.clientX, e.clientY);
-        });
-        document.addEventListener('mouseup', function(e) {
-            if (!active) return;
-            active = false;
-        });
-        ball.addEventListener('click', function(e) {
-            if (isDragging) {
-                e.stopImmediatePropagation();
-                e.preventDefault();
-            }
-        }, true);
-    })();
 </script>
 </body>
 </html>
