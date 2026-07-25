@@ -656,6 +656,31 @@
                     <p class="text-[10px] text-gray-400 mt-2 text-center">点击表情包可多选，点击上方按钮删除</p>
                 </section>
 
+                <!-- User 面具栏目 -->
+                <section class="bg-white/80 p-4 rounded-3xl shadow-sm border border-white space-y-3">
+                    <div class="flex justify-between items-center border-b pb-2 mb-2">
+                        <h3 class="font-bold text-stone-700">User 面具 ({{ userPersonas.length }})</h3>
+                        <button @click="addUserPersona" class="text-xs bg-stone-800 text-white px-2.5 py-1.5 rounded-full hover:bg-stone-900 transition">
+                            ＋ 添加面具
+                        </button>
+                    </div>
+                    <div class="space-y-2 max-h-60 overflow-y-auto pr-1">
+                        <div v-for="p in userPersonas" :key="p.id" class="p-3 bg-stone-50 rounded-2xl border border-stone-200 shadow-sm flex flex-col space-y-1">
+                            <div class="flex justify-between items-center">
+                                <span class="font-bold text-xs text-stone-800">🎭 {{ p.name }}</span>
+                                <div class="flex space-x-2">
+                                    <button @click="editUserPersona(p)" class="text-stone-600 hover:text-black text-[10px] font-bold">编辑</button>
+                                    <button @click="deleteUserPersona(p.id)" class="text-red-500 hover:text-red-700 text-[10px] font-bold">删除</button>
+                                </div>
+                            </div>
+                            <p class="text-[10px] text-stone-500 line-clamp-2 italic">{{ p.persona }}</p>
+                        </div>
+                        <div v-if="userPersonas.length === 0" class="text-center py-4 text-xs text-stone-400">
+                            暂无已创建的 User 面具，快添加一个吧！
+                        </div>
+                    </div>
+                </section>
+
                 <!-- 钱包入口 -->
                 <section class="bg-white/80 p-4 rounded-3xl shadow-sm border border-white cursor-pointer hover:bg-white transition" @click="openWallet">
                     <div class="flex justify-between items-center">
@@ -962,6 +987,16 @@
                             <option v-for="map in maps" :key="map.id" :value="map.id">{{ map.name }}</option>
                         </select>
                     </div>
+                    
+                    <!-- 新增：角色眼里的 User 面具设置 -->
+                    <div class="flex items-center justify-between border-t pt-3">
+                        <span class="font-medium">🎭 角色眼里的user</span>
+                        <select v-model="activeFriend.selectedUserPersonaId" class="border p-2 rounded-xl outline-none bg-stone-50/50 text-xs font-semibold text-stone-700 focus:border-stone-500 w-36">
+                            <option value="">-- 使用真实 User --</option>
+                            <option v-for="p in userPersonas" :key="p.id" :value="p.id">{{ p.name }}</option>
+                        </select>
+                    </div>
+
                     <div class="flex items-center justify-between border-t pt-3">
                         <span class="font-medium">🌍 世界观设定</span>
                         <button @click="openWorldviewManager" class="bg-stone-100 text-stone-700 px-3 py-1.5 rounded-xl border border-stone-200 text-xs font-semibold hover:bg-stone-200/50 transition">
@@ -1322,7 +1357,27 @@
                 </div>
             </div>
         </div>
-        <!-- 1. 弹窗：气泡 CSS 美化 -->
+
+        <!-- 弹窗：创建/修改 User 人设面具 -->
+        <div v-if="showUserPersonaModal" class="absolute inset-0 bg-black/50 flex items-center justify-center p-6 z-[80]">
+            <div class="bg-white rounded-2xl w-full p-5 shadow-xl max-h-[90%] overflow-y-auto">
+                <h3 class="font-bold mb-4 text-stone-800">{{ userPersonaForm.id ? '编辑 User 面具' : '新建 User 面具' }}</h3>
+                <div class="space-y-3 text-sm">
+                    <div>
+                        <label class="block text-stone-600 mb-1">面具角色名称</label>
+                        <input v-model="userPersonaForm.name" type="text" class="w-full border p-2 rounded-xl outline-none focus:border-stone-500 bg-stone-50/50" placeholder="如：傲娇妹妹、冷酷上司">
+                    </div>
+                    <div>
+                        <label class="block text-stone-600 mb-1">具体人设</label>
+                        <textarea v-model="userPersonaForm.persona" rows="8" class="w-full border p-2 rounded-xl outline-none focus:border-stone-500 bg-stone-50/50 text-xs leading-relaxed" placeholder="请输入当前面具的具体性格特征、身份背景，角色将会读取此内容来感知并称呼你。"></textarea>
+                    </div>
+                </div>
+                <div class="flex space-x-2 mt-5">
+                    <button @click="showUserPersonaModal = false" class="flex-1 p-2.5 bg-gray-200 rounded-xl text-stone-600 font-medium">取消</button>
+                    <button @click="saveUserPersona" class="flex-1 p-2.5 bg-stone-800 text-white rounded-xl font-medium">保存</button>
+                </div>
+            </div>
+        </div>
         <div v-if="showBubbleEditorModal" class="absolute inset-0 bg-black/50 flex items-center justify-center p-6 z-[80]">
             <div class="bg-white rounded-2xl w-full p-5 shadow-xl max-h-[90%] overflow-y-auto space-y-4">
                 <h3 class="font-bold text-stone-850">气泡 CSS 美化</h3>
@@ -1602,6 +1657,53 @@
 
                 // 数据状态
                 const friends = ref(JSON.parse(localStorage.getItem('chat_friends') || '[{"id":1, "name":"AI助手(默认)", "lastMsg":"", "persona":"", "allowEmoji":false}]'));
+                
+                // 新增：User 面具状态数据
+                const userPersonas = ref(JSON.parse(localStorage.getItem('chat_user_personas') || '[]'));
+                const showUserPersonaModal = ref(false);
+                const userPersonaForm = ref({ id: null, name: '', persona: '' });
+
+                const addUserPersona = () => {
+                    userPersonaForm.value = { id: null, name: '', persona: '' };
+                    showUserPersonaModal.value = true;
+                };
+
+                const editUserPersona = (p) => {
+                    userPersonaForm.value = { id: p.id, name: p.name, persona: p.persona };
+                    showUserPersonaModal.value = true;
+                };
+
+                const saveUserPersona = () => {
+                    if (!userPersonaForm.value.name.trim() || !userPersonaForm.value.persona.trim()) {
+                        return alert('面具名称和人设内容均不能为空！');
+                    }
+                    if (userPersonaForm.value.id) {
+                        const item = userPersonas.value.find(p => p.id === userPersonaForm.value.id);
+                        if (item) {
+                            item.name = userPersonaForm.value.name.trim();
+                            item.persona = userPersonaForm.value.persona.trim();
+                        }
+                    } else {
+                        userPersonas.value.push({
+                            id: Date.now(),
+                            name: userPersonaForm.value.name.trim(),
+                            persona: userPersonaForm.value.persona.trim()
+                        });
+                    }
+                    showUserPersonaModal.value = false;
+                };
+
+                const deleteUserPersona = (id) => {
+                    if (confirm('确定要删除这个 User 面具吗？')) {
+                        userPersonas.value = userPersonas.value.filter(p => p.id !== id);
+                        // 清理绑定了该面具的角色关系
+                        friends.value.forEach(f => {
+                            if (f.selectedUserPersonaId === id) {
+                                delete f.selectedUserPersonaId;
+                            }
+                        });
+                    }
+                };
                 const chatHistory = ref(JSON.parse(localStorage.getItem('chat_history') || '{"1":[]}'));
                 const emojis = ref(JSON.parse(localStorage.getItem('chat_emojis') || '[]'));
                 const presets = ref(JSON.parse(localStorage.getItem('chat_presets') || '[]'));
@@ -1742,7 +1844,7 @@
                 });
 
                 // 监听数据变化并持久化
-                watch([friends, chatHistory, emojis, presets, walletData, favorites, offlineChatHistory, writingStyles, openingRemarks, worldviews, minimaxConfig], () => {
+                watch([friends, chatHistory, emojis, presets, walletData, favorites, offlineChatHistory, writingStyles, openingRemarks, worldviews, minimaxConfig, userPersonas], () => {
                     localStorage.setItem('chat_friends', JSON.stringify(friends.value));
                     localStorage.setItem('chat_history', JSON.stringify(chatHistory.value));
                     localStorage.setItem('chat_emojis', JSON.stringify(emojis.value));
@@ -1757,6 +1859,7 @@
                     localStorage.setItem('chat_minimax_key', minimaxConfig.value.apiKey);
                     localStorage.setItem('chat_minimax_group', minimaxConfig.value.groupId);
                     localStorage.setItem('chat_minimax_model', minimaxConfig.value.model);
+                    localStorage.setItem('chat_user_personas', JSON.stringify(userPersonas.value));
                 }, { deep: true });
 
                 // 新增：角色大厅云端读写及大厅操作逻辑函数
@@ -2141,12 +2244,16 @@
                     const currentWv = worldviews.value.find(w => w.id === activeFriend.value.selectedWorldviewId);
                     const wvPrompt = currentWv ? `\n【当前所处的世界观设定背景（发帖和回复必须符合本背景规则）】：\n设定名称：${currentWv.name}\n设定详情：${currentWv.content}\n` : '';
 
+                    // 获取绑定的 User 面具人设
+                    const boundUserPersona = userPersonas.value.find(p => p.id === activeFriend.value.selectedUserPersonaId);
+                    const userPersonaPrompt = boundUserPersona ? `\n【当前与你对话的用户人设背景（在你眼里他是这样的人，请根据此人设与他互动）】：\n名字：${boundUserPersona.name}\n人设设定：${boundUserPersona.persona}\n` : '';
+
                     try {
                         const sys = `# Role
 你现在化身为[${activeFriend.value.name}]。
 当前场景：你与用户正在【线下见面/面对面相处】。
 你的人设背景：${activeFriend.value.persona || '普通人'}
-${wvPrompt}${mapPrompt}${stylePrompt}
+${wvPrompt}${userPersonaPrompt}${mapPrompt}${stylePrompt}
 # 线下聊天特有规则（面对面相处）
 1. 沉浸式神态动作描写：请在回复中穿插丰富的神态、动作、心理或环境描写（使用括号如 "（红着脸低下头）" 或星号如 "*手足无措地摆摆手*" 包裹，突出面对面互动的细节与画面感）。
 2. 长对话输出：面对面时你可以输出更加完整、深度的长句和连续对话，不再需要像微信打字那样碎片化拆分发送。
@@ -2547,6 +2654,10 @@ const playVoice = async (msg, event) => {
                     const currentWv = worldviews.value.find(w => w.id === activeFriend.value.selectedWorldviewId);
                     const wvPrompt = currentWv ? `\n【当前所处的世界观设定背景（发帖和回复必须符合本背景规则）】：\n设定名称：${currentWv.name}\n设定详情：${currentWv.content}\n` : '';
 
+                    // 获取绑定的 User 面具人设
+                    const boundUserPersona = userPersonas.value.find(p => p.id === activeFriend.value.selectedUserPersonaId);
+                    const userPersonaPrompt = boundUserPersona ? `\n【当前与你对话的用户人设背景（在你眼里他是这样的人，请根据此人设来称呼和对待他，不要跳戏）：】\n名字：${boundUserPersona.name}\n人设设定：${boundUserPersona.persona}\n` : '';
+
                     // 创建超时控制工具，设定 20 秒无响应自动断开
                     const controller = new AbortController();
                     const timeoutId = setTimeout(() => controller.abort(), 20000);
@@ -2555,7 +2666,7 @@ const playVoice = async (msg, event) => {
                         const sys = `# Role
 你现在化身为[${activeFriend.value.name}]。
 你的性格设定：${activeFriend.value.persona || '普通人'}
-${wvPrompt}${mapPrompt}${timePrompt}${rechargePrompt}${watchPrompt}
+${wvPrompt}${userPersonaPrompt}${mapPrompt}${timePrompt}${rechargePrompt}${watchPrompt}
 
 # 语言风格（强制执行）
 1. 碎片化：不要一次性说一大堆话。请像真实微信聊天一样，将长句拆分成多条短句发送。
@@ -3882,7 +3993,10 @@ return {
                     openWallet, withdrawAlert, walletSelfRecharge, walletAskFriendRecharge, confirmFriendRecharge,
 
                     // 收藏 & 引用系统导出
-                    favorites, quotedText, openFavorites, deleteFavorite, favoriteSingleMsg, quoteMsg, clearQuote
+                    favorites, quotedText, openFavorites, deleteFavorite, favoriteSingleMsg, quoteMsg, clearQuote,
+
+                    // User 面具管理导出
+                    userPersonas, showUserPersonaModal, userPersonaForm, addUserPersona, editUserPersona, saveUserPersona, deleteUserPersona
                 };
             }
         }).mount('#app');

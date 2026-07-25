@@ -294,7 +294,7 @@
                 <!-- 第一页 -->
                 <div class="w-full flex-shrink-0 home-screen">
                     <!-- Row 1: 顶部时钟组件 -->
-                    <div class="header-widget widget-base">
+                    <div id="widget-header" class="header-widget widget-base">
                         <div class="text-4xl font-light tracking-tight">{{ currentTime }}</div>
                         <div class="text-xs opacity-90 mt-1 font-medium">{{ currentDate }}</div>
                     </div>
@@ -316,7 +316,7 @@
                     </div>
                     
                     <!-- 右侧纵向组件 (2x3) -->
-                    <div class="vertical-widget widget-base overflow-hidden relative">
+                    <div id="widget-p1-vertical" class="vertical-widget widget-base overflow-hidden relative">
                         <img v-if="appearanceConfig.verticalWidget.bgImage" :src="appearanceConfig.verticalWidget.bgImage" class="w-full h-full object-cover absolute inset-0" />
                         <span v-else class="text-xs opacity-60">纯图片组件</span>
                     </div>
@@ -336,7 +336,7 @@
                         <span class="icon-label">{{ getAppLabel('zilv', '自律打卡') }}</span>
                     </div>
                     <!-- Row 4: 左侧正方形组件 (2x2) -->
-                    <div class="square-widget widget-base overflow-hidden relative p-4 flex flex-col justify-end items-start text-left">
+                    <div id="widget-p1-square" class="square-widget widget-base overflow-hidden relative p-4 flex flex-col justify-end items-start text-left">
                         <img v-if="appearanceConfig.squareWidget.bgImage" :src="appearanceConfig.squareWidget.bgImage" class="w-full h-full object-cover absolute inset-0" />
                         <div class="relative z-10 w-full h-full flex flex-col justify-end">
                             <p class="text-xs font-semibold text-white whitespace-pre-wrap" style="text-shadow: 1px 1px 3px rgba(0,0,0,0.9), 0 0 5px rgba(0,0,0,0.6);">
@@ -360,7 +360,7 @@
                         <span class="icon-label">{{ getAppLabel('chashouji', '查手机') }}</span>
                     </div>
                     <!-- Row 6: 底部 5 列图标行 -->
-                    <div class="five-col-row">
+                    <div id="widget-dock" class="five-col-row">
                         <!-- 第1个App -->
                         <div class="app-icon" @click="openShoppingPage">
                             <div v-if="getAppIcon('shopping')" class="icon-box overflow-hidden">
@@ -398,7 +398,7 @@
                             <span class="icon-label">{{ getAppLabel('map', '地图') }}</span>
                         </div>
                         <!-- 第5个App (新外观 App) -->
-                        <div class="app-icon" @click="currentView = 'appearance-settings'">
+                        <div class="app-icon" @click="openAppearanceSettings">
                             <div v-if="getAppIcon('appearance')" class="icon-box overflow-hidden">
                                 <img :src="getAppIcon('appearance')" class="w-full h-full object-cover" />
                             </div>
@@ -410,38 +410,53 @@
                 
                 <!-- 第二页 -->
                 <div class="w-full flex-shrink-0 home-screen pt-8">
-                    <!-- 第一行：4个新图标 -->
-                    <!-- 1. 收纳助手 -->
-                    <div class="app-icon" @click="openShounaPage">
+                    <!-- 1. 收纳助手 (放置在第2行第1列) -->
+                    <div class="app-icon" @click="openShounaPage" style="grid-column: 1; grid-row: 2;">
                         <div v-if="getAppIcon('shouna')" class="icon-box overflow-hidden">
                             <img :src="getAppIcon('shouna')" class="w-full h-full object-cover" />
                         </div>
                         <div v-else class="icon-box" style="background-color: #4f46e5; display: flex; align-items: center; justify-content: center; font-size: 28px;">📦</div>
                         <span class="icon-label">{{ getAppLabel('shouna', '收纳助手') }}</span>
                     </div>
-                    <!-- 2. 对对碰背单词 -->
-                    <div class="app-icon" @click="openBeidanciPage">
+                    <!-- 2. 对对碰背单词 (放置在第2行第2列) -->
+                    <div class="app-icon" @click="openBeidanciPage" style="grid-column: 2; grid-row: 2;">
                         <div v-if="getAppIcon('beidanci')" class="icon-box overflow-hidden">
                             <img :src="getAppIcon('beidanci')" class="w-full h-full object-cover" />
                         </div>
                         <div v-else class="icon-box" style="background-color: #a3c9ea; display: flex; align-items: center; justify-content: center; font-size: 28px;">📚</div>
                         <span class="icon-label">{{ getAppLabel('beidanci', '对对碰') }}</span>
                     </div>
-                    <!-- 3. 角色卡 App (原待办 1) -->
-                    <div class="app-icon" @click="openCharacterApp">
+                    <!-- 3. 角色卡 App (放置在第3行第1列) -->
+                    <div class="app-icon" @click="openCharacterApp" style="grid-column: 1; grid-row: 3;">
                         <div v-if="getAppIcon('character')" class="icon-box overflow-hidden">
                             <img :src="getAppIcon('character')" class="w-full h-full object-cover" />
                         </div>
                         <div v-else class="icon-box" style="background-color: #ff5e3a; display: flex; align-items: center; justify-content: center; font-size: 28px;">👤</div>
                         <span class="icon-label">{{ getAppLabel('character', '角色卡') }}</span>
                     </div>
-                    <!-- 4. 世界观 App (原待办 2) -->
-                    <div class="app-icon" @click="openWorldviewApp">
+                    <!-- 4. 世界观 App (放置在第3行第2列) -->
+                    <div class="app-icon" @click="openWorldviewApp" style="grid-column: 2; grid-row: 3;">
                         <div v-if="getAppIcon('worldview')" class="icon-box overflow-hidden">
                             <img :src="getAppIcon('worldview')" class="w-full h-full object-cover" />
                         </div>
                         <div v-else class="icon-box" style="background-color: #3b82f6; display: flex; align-items: center; justify-content: center; font-size: 28px;">📖</div>
                         <span class="icon-label">{{ getAppLabel('worldview', '世界观') }}</span>
+                    </div>
+
+                    <!-- 第二页：右侧纵向长条组件 (纯图片组件) -->
+                    <div id="widget-p2-vertical" class="vertical-widget widget-base overflow-hidden relative">
+                        <img v-if="appearanceConfig.verticalWidget.bgImage" :src="appearanceConfig.verticalWidget.bgImage" class="w-full h-full object-cover absolute inset-0" />
+                        <span v-else class="text-xs opacity-60">纯图片组件</span>
+                    </div>
+
+                    <!-- 第二页：左侧正方形大组件 (自定义卡片带文字组件) -->
+                    <div id="widget-p2-square" class="square-widget widget-base overflow-hidden relative p-4 flex flex-col justify-end items-start text-left">
+                        <img v-if="appearanceConfig.squareWidget.bgImage" :src="appearanceConfig.squareWidget.bgImage" class="w-full h-full object-cover absolute inset-0" />
+                        <div class="relative z-10 w-full h-full flex flex-col justify-end">
+                            <p class="text-xs font-semibold text-white whitespace-pre-wrap" style="text-shadow: 1px 1px 3px rgba(0,0,0,0.9), 0 0 5px rgba(0,0,0,0.6);">
+                                {{ appearanceConfig.squareWidget.text || '暂无自定义内容\n请在外观设置中编辑' }}
+                            </p>
+                        </div>
                     </div>
                 </div>
                  
@@ -459,7 +474,10 @@
     <div v-if="currentView === 'appearance-settings'" class="settings-view flex flex-col justify-start z-[100]">
         <div class="flex items-center justify-between mb-8">
             <h2 class="text-2xl font-bold text-white tracking-wider">外观设置</h2>
-            <button @click="saveAppearanceConfig" class="text-sm bg-blue-600 text-white px-4 py-2 rounded-full hover:bg-blue-500 transition">保存配置</button>
+            <div class="flex space-x-2">
+                <button @click="openWidgetCssSettings" class="text-xs bg-purple-600 text-white px-4 py-2 rounded-full hover:bg-purple-500 transition">CSS 美化</button>
+                <button @click="saveAppearanceConfig" class="text-xs bg-blue-600 text-white px-4 py-2 rounded-full hover:bg-blue-500 transition">保存配置</button>
+            </div>
         </div>
         
         <div class="space-y-6 overflow-y-auto max-h-[80vh] pr-1 pb-10">
@@ -534,6 +552,74 @@
             </section>
             
             <button @click="currentView = 'home'" class="w-full bg-white/10 hover:bg-white/20 text-white border border-white/20 p-3 rounded-2xl font-bold transition text-center">取消并返回桌面</button>
+        </div>
+    </div>
+
+    <!-- 6. 小组件 CSS 美化页面 -->
+    <div v-if="currentView === 'widget-css-settings'" class="settings-view flex flex-col justify-start z-[100]">
+        <div class="flex items-center justify-between mb-8">
+            <h2 class="text-2xl font-bold text-white tracking-wider">小组件 CSS 美化</h2>
+            <button @click="saveWidgetCssConfig" class="text-sm bg-blue-600 text-white px-4 py-2 rounded-full hover:bg-blue-500 transition">保存配置</button>
+        </div>
+        
+        <div class="space-y-6 overflow-y-auto max-h-[80vh] pr-1 pb-10">
+            <p class="text-xs text-gray-400">请在下方输入自定义 CSS 规则，微调各个关键组件的毛玻璃度、渐变底色或圆角。（直接填入 CSS 属性键值对即可，例如：`background: red; border-radius: 10px;`）</p>
+            
+            <!-- 1. 顶部时钟组件 -->
+            <section class="bg-white/10 p-5 rounded-3xl border border-white/20 shadow-md space-y-2">
+                <div class="flex justify-between items-center border-b border-white/10 pb-2">
+                    <h3 class="font-bold text-white text-sm">顶部时钟组件</h3>
+                    <span class="text-[10px] text-zinc-400 font-mono">ID 选择器：#widget-header</span>
+                </div>
+                <textarea v-model="tempAppearance.widgetCss.header" rows="3" class="w-full bg-black/45 border border-white/20 p-2.5 rounded-xl text-xs text-white font-mono outline-none focus:border-purple-500 transition" placeholder="例如: background: linear-gradient(to right, #ff7e5f, #feb47b); border: 2px solid rgba(255,255,255,0.4);"></textarea>
+            </section>
+
+            <!-- 2. 第一页右侧长条组件 -->
+            <section class="bg-white/10 p-5 rounded-3xl border border-white/20 shadow-md space-y-2">
+                <div class="flex justify-between items-center border-b border-white/10 pb-2">
+                    <h3 class="font-bold text-white text-sm">第一页右侧长条组件</h3>
+                    <span class="text-[10px] text-zinc-400 font-mono">ID 选择器：#widget-p1-vertical</span>
+                </div>
+                <textarea v-model="tempAppearance.widgetCss.p1Vertical" rows="3" class="w-full bg-black/45 border border-white/20 p-2.5 rounded-xl text-xs text-white font-mono outline-none focus:border-purple-500 transition" placeholder="输入 CSS..."></textarea>
+            </section>
+
+            <!-- 3. 第一页左侧正方形组件 -->
+            <section class="bg-white/10 p-5 rounded-3xl border border-white/20 shadow-md space-y-2">
+                <div class="flex justify-between items-center border-b border-white/10 pb-2">
+                    <h3 class="font-bold text-white text-sm">第一页左侧正方形组件</h3>
+                    <span class="text-[10px] text-zinc-400 font-mono">ID 选择器：#widget-p1-square</span>
+                </div>
+                <textarea v-model="tempAppearance.widgetCss.p1Square" rows="3" class="w-full bg-black/45 border border-white/20 p-2.5 rounded-xl text-xs text-white font-mono outline-none focus:border-purple-500 transition" placeholder="输入 CSS..."></textarea>
+            </section>
+
+            <!-- 4. 第二页右侧长条组件 -->
+            <section class="bg-white/10 p-5 rounded-3xl border border-white/20 shadow-md space-y-2">
+                <div class="flex justify-between items-center border-b border-white/10 pb-2">
+                    <h3 class="font-bold text-white text-sm">第二页右侧长条组件</h3>
+                    <span class="text-[10px] text-zinc-400 font-mono">ID 选择器：#widget-p2-vertical</span>
+                </div>
+                <textarea v-model="tempAppearance.widgetCss.p2Vertical" rows="3" class="w-full bg-black/45 border border-white/20 p-2.5 rounded-xl text-xs text-white font-mono outline-none focus:border-purple-500 transition" placeholder="输入 CSS..."></textarea>
+            </section>
+
+            <!-- 5. 第二页左侧正方形组件 -->
+            <section class="bg-white/10 p-5 rounded-3xl border border-white/20 shadow-md space-y-2">
+                <div class="flex justify-between items-center border-b border-white/10 pb-2">
+                    <h3 class="font-bold text-white text-sm">第二页左侧正方形组件</h3>
+                    <span class="text-[10px] text-zinc-400 font-mono">ID 选择器：#widget-p2-square</span>
+                </div>
+                <textarea v-model="tempAppearance.widgetCss.p2Square" rows="3" class="w-full bg-black/45 border border-white/20 p-2.5 rounded-xl text-xs text-white font-mono outline-none focus:border-purple-500 transition" placeholder="输入 CSS..."></textarea>
+            </section>
+
+            <!-- 6. 底部快捷 Dock 栏 -->
+            <section class="bg-white/10 p-5 rounded-3xl border border-white/20 shadow-md space-y-2">
+                <div class="flex justify-between items-center border-b border-white/10 pb-2">
+                    <h3 class="font-bold text-white text-sm">底部快捷 Dock 栏</h3>
+                    <span class="text-[10px] text-zinc-400 font-mono">ID 选择器：#widget-dock</span>
+                </div>
+                <textarea v-model="tempAppearance.widgetCss.dock" rows="3" class="w-full bg-black/45 border border-white/20 p-2.5 rounded-xl text-xs text-white font-mono outline-none focus:border-purple-500 transition" placeholder="例如: background: rgba(0,0,0,0.5); padding: 10px 15px; border-radius: 30px;"></textarea>
+            </section>
+            
+            <button @click="currentView = 'appearance-settings'" class="w-full bg-white/10 hover:bg-white/20 text-white border border-white/20 p-3 rounded-2xl font-bold transition text-center">返回外观设置</button>
         </div>
     </div>
 
@@ -1164,6 +1250,14 @@
                     beidanci: { icon: '', label: '' },
                     character: { icon: '', label: '' },
                     worldview: { icon: '', label: '' }
+                },
+                widgetCss: {
+                    header: '',
+                    p1Vertical: '',
+                    p1Square: '',
+                    p2Vertical: '',
+                    p2Square: '',
+                    dock: ''
                 }
             };
 
@@ -1173,6 +1267,26 @@
             // 兜底校验并向后兼容补齐缺失的新 App 键值与旧待办 App 转换迁移
             if (!parsedConfig.verticalWidget) parsedConfig.verticalWidget = { bgImage: '' };
             if (!parsedConfig.squareWidget) parsedConfig.squareWidget = { bgImage: '', text: '' };
+            
+            // 兜底及结构迁移：小组件 CSS 补齐
+            if (!parsedConfig.widgetCss) {
+                parsedConfig.widgetCss = {
+                    header: '',
+                    p1Vertical: '',
+                    p1Square: '',
+                    p2Vertical: '',
+                    p2Square: '',
+                    dock: ''
+                };
+            } else {
+                const requiredCssKeys = ['header', 'p1Vertical', 'p1Square', 'p2Vertical', 'p2Square', 'dock'];
+                requiredCssKeys.forEach(key => {
+                    if (parsedConfig.widgetCss[key] === undefined) {
+                        parsedConfig.widgetCss[key] = '';
+                    }
+                });
+            }
+
             if (!parsedConfig.apps) {
                 parsedConfig.apps = JSON.parse(JSON.stringify(defaultAppearance.apps));
             } else {
@@ -1193,6 +1307,29 @@
 
             const appearanceConfig = ref(parsedConfig);
             const tempAppearance = ref(JSON.parse(JSON.stringify(appearanceConfig.value)));
+
+            // 动态注入/应用 CSS 系统
+            const combinedWidgetCss = computed(() => {
+                const css = appearanceConfig.value.widgetCss || {};
+                let styles = '';
+                if (css.header) styles += `#widget-header { ${css.header} }\n`;
+                if (css.p1Vertical) styles += `#widget-p1-vertical { ${css.p1Vertical} }\n`;
+                if (css.p1Square) styles += `#widget-p1-square { ${css.p1Square} }\n`;
+                if (css.p2Vertical) styles += `#widget-p2-vertical { ${css.p2Vertical} }\n`;
+                if (css.p2Square) styles += `#widget-p2-square { ${css.p2Square} }\n`;
+                if (css.dock) styles += `#widget-dock { ${css.dock} }\n`;
+                return styles;
+            });
+
+            watch(combinedWidgetCss, (newCss) => {
+                let styleEl = document.getElementById('dynamic-widget-style');
+                if (!styleEl) {
+                    styleEl = document.createElement('style');
+                    styleEl.id = 'dynamic-widget-style';
+                    document.head.appendChild(styleEl);
+                }
+                styleEl.innerHTML = newCss;
+            }, { immediate: true });
 
             const getAppIcon = (id) => appearanceConfig.value.apps[id]?.icon || '';
             const getAppLabel = (id, fallback) => appearanceConfig.value.apps[id]?.label || fallback;
@@ -1245,6 +1382,25 @@
                 localStorage.setItem('sys_appearance_config', JSON.stringify(appearanceConfig.value));
                 currentView.value = 'home';
                 alert('外观设置保存成功！');
+            };
+
+            // 外观页面跳转初始化 tempAppearance
+            const openAppearanceSettings = () => {
+                tempAppearance.value = JSON.parse(JSON.stringify(appearanceConfig.value));
+                currentView.value = 'appearance-settings';
+            };
+
+            // CSS 美化设置页面跳转逻辑
+            const openWidgetCssSettings = () => {
+                tempAppearance.value = JSON.parse(JSON.stringify(appearanceConfig.value));
+                currentView.value = 'widget-css-settings';
+            };
+
+            const saveWidgetCssConfig = () => {
+                appearanceConfig.value = JSON.parse(JSON.stringify(tempAppearance.value));
+                localStorage.setItem('sys_appearance_config', JSON.stringify(appearanceConfig.value));
+                currentView.value = 'appearance-settings';
+                alert('小组件 CSS 样式保存成功！');
             };
 
             // 设备 ID 与激活码生成
@@ -1889,7 +2045,10 @@
                 wbData, currentWbTab, wbSearchInput, showWbModal, wbForm, collapsedGroups, showHtmlPreview, htmlPreviewFrame, filteredWbBooks, hasGroupBooks, getGroupBooks, getGroupBooksCount, toggleWbGroup, openWbModal, saveWbBook, deleteWbBook, addNewWbGroup, handleWbImport, previewHtml,
                 
                 // API功能补齐导出
-                fetchModels, savePreset, loadPreset, deletePreset, deleteSelectedEmojis
+                fetchModels, savePreset, loadPreset, deletePreset, deleteSelectedEmojis,
+
+                // 新增外观与样式设置
+                openAppearanceSettings, openWidgetCssSettings, saveWidgetCssConfig
             };
         }
     }).mount('#app');
