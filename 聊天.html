@@ -7,6 +7,11 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
 <style>
+    /* Vue 编译防闪烁样式 */
+    [v-cloak] {
+        display: none !important;
+    }
+    
     .safe-area-bottom { padding-bottom: env(safe-area-inset-bottom); }
     .hide-scrollbar::-webkit-scrollbar { display: none; }
     
@@ -42,12 +47,34 @@
         .animate-fade-in {
             animation: fadeIn 0.15s ease-out forwards;
         }
+
+        /* 悬浮球样式 */
+        #floating-ball {
+            position: fixed !important;
+            z-index: 99999 !important;
+            cursor: move !important;
+            width: 50px !important;
+            height: 50px !important;
+            background: radial-gradient(circle, #ffffff 0%, #ffffff 25%, #b3b3b3 26%, #b3b3b3 45%, #4d4d4d 46%, #4d4d4d 70%, #1a1a1a 71%, #1a1a1a 100%) !important;
+            border-radius: 50% !important;
+            transform: none !important;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(0, 0, 0, 0.1) !important;
+            border: none !important;
+            display: flex !important;
+            align-items: center;
+            justify-content: center;
+            touch-action: none !important;
+            transition: opacity 0.2s ease;
+        }
+        #floating-ball:active {
+            opacity: 0.8 !important;
+        }
     </style>
 </head>
 <body class="h-screen flex justify-center overflow-hidden text-gray-800 font-sans">
     
     <!-- 主应用容器 -->
-    <div id="app" class="w-full max-w-md h-full flex flex-col justify-between p-4 relative overflow-hidden">
+    <div id="app" v-cloak class="w-full max-w-md h-full flex flex-col justify-between p-4 relative overflow-hidden">
         
         <!-- Header (列表视图下的精美 Header) -->
         <header v-if="currentView === 'list'" class="pt-2 px-2 pb-2 flex flex-col items-center shrink-0">
@@ -123,7 +150,11 @@
                 </div>
             </div>
             
-            <div class="flex items-center justify-end min-w-[60px]" :style="{ opacity: activeFriend && activeFriend.headerMoreOpacity !== undefined ? activeFriend.headerMoreOpacity / 100 : 1.0 }">
+            <div class="flex items-center justify-end min-w-[60px] space-x-2.5" :style="{ opacity: activeFriend && activeFriend.headerMoreOpacity !== undefined ? activeFriend.headerMoreOpacity / 100 : 1.0 }">
+                <!-- 状态栏按钮 -->
+                <button v-if="currentView === 'chat' && chatMode === 'online'" @click="openStatusPage" class="text-xl hover:scale-95 transition" title="角色状态">
+                    📊
+                </button>
                 <!-- 仅在线上模式允许打开好友设置 -->
                 <button v-if="chatMode === 'online'" @click="showFriendSettings = true" class="flex items-center">
                     <img v-if="activeFriend && activeFriend.headerMoreImg" :src="activeFriend.headerMoreImg" class="h-6 object-contain" />
@@ -234,7 +265,7 @@
 
                 <!-- 状态标签组 -->
                 <div class="flex justify-between w-full px-1 text-xs">
-                    <span class="px-5 py-1 rounded-full bg-white text-stone-800 shadow-[0_2px_6px_rgba(0,0,0,0.03)] border border-white font-semibold">自由</span>
+                    <span class="px-5 py-1 rounded-full bg-white text-stone-805 shadow-[0_2px_6px_rgba(0,0,0,0.03)] border border-white font-semibold">自由</span>
                     <span class="px-5 py-1 rounded-full bg-white/20 text-stone-400 font-medium">慵懒</span>
                     <span class="px-5 py-1 rounded-full bg-white/20 text-stone-400 font-medium">知足</span>
                     <span class="px-5 py-1 rounded-full bg-white/20 text-stone-400 font-medium">随性</span>
@@ -283,17 +314,75 @@
                             <div :class="['w-5 h-5 rounded-full border-2', selectedIndexes.includes(index) ? 'bg-stone-800 border-stone-800' : 'border-gray-400']"></div>
                         </div>
 
-                        <div :class="['max-w-[80%] p-3 shadow-sm', msg.role === 'user' ? 'bg-stone-800 text-white rounded-[18px_18px_4px_18px]' : 'bg-white/70 text-stone-800 rounded-[18px_18px_18px_4px] border border-white/50 backdrop-blur-md']">
-                            <div v-if="msg.quoted" :class="['text-[11px] border-b pb-1 mb-1 italic truncate max-w-[200px]', msg.role === 'user' ? 'text-stone-300 border-white/20' : 'text-stone-500 border-stone-200']">「{{ msg.quoted }}」</div>
-                            <div v-if="msg.type === 'text'" class="text-[15px] leading-relaxed whitespace-pre-wrap">{{ msg.content }}</div>
-                            <img v-else-if="msg.type === 'emoji'" :src="msg.content" class="max-w-[100px] rounded-lg">
-                            <!-- 充值申请卡片样式 -->
-                            <div v-else-if="msg.type === 'recharge_card'" class="p-3 border-l-4 border-amber-500 bg-white text-stone-850 rounded-xl shadow-inner min-w-[200px]">
-                                <div class="text-[10px] text-stone-400 font-semibold tracking-wider uppercase mb-1">帮我充值</div>
-                                <div class="text-2xl font-extrabold text-stone-800">￥{{ msg.amount }}</div>
-                                <div @click="confirmFriendRecharge(msg)" class="text-[10px] text-blue-500 font-bold mt-3 border-t border-stone-150 pt-2 cursor-pointer text-center hover:text-blue-600 transition">点击同意并充值</div>
-                            </div>
-                        </div>
+<!-- 修改以适配语音气泡并处理左右对齐 -->
+<div v-if="msg.type === 'voice'" :class="['flex flex-col space-y-1', msg.role === 'user' ? 'items-end' : 'items-start']">
+    <!-- 模拟微信语音条（随文字长度动态变化宽度，最窄110px，最宽260px） -->
+    <div @click="playVoice(msg, $event)" 
+         :style="{ width: Math.min(110 + msg.content.length * 6, 260) + 'px' }"
+         :class="['cursor-pointer p-3 shadow-[0_2px_8px_rgba(0,0,0,0.04)] flex items-center justify-between rounded-[18px_18px_18px_4px] border border-white/50 backdrop-blur-md transition-all duration-300 active:scale-95', msg.role === 'user' ? 'bg-stone-800 text-white rounded-tr-none flex-row-reverse' : 'bg-white/70 text-stone-800 rounded-tl-none']">
+        
+        <!-- 语音条三段波形动画效果 -->
+        <div class="flex items-end space-x-0.5 h-4 px-1">
+            <span :class="['w-0.5 rounded-full transition-all', msg.role === 'user' ? 'bg-white' : 'bg-stone-700', msg.isPlaying ? 'animate-pulse h-3.5' : 'h-1.5']"></span>
+            <span :class="['w-0.5 rounded-full transition-all', msg.role === 'user' ? 'bg-white' : 'bg-stone-700', msg.isPlaying ? 'animate-pulse h-2' : 'h-3.5']"></span>
+            <span :class="['w-0.5 rounded-full transition-all', msg.role === 'user' ? 'bg-white' : 'bg-stone-700', msg.isPlaying ? 'animate-pulse h-3' : 'h-2.5']"></span>
+        </div>
+
+        <!-- 语音字数模拟的时长显示及播放中文本 -->
+        <div class="flex items-center space-x-1.5">
+            <span v-if="msg.isPlaying" class="text-[9px] text-amber-500 font-bold animate-pulse">🔊 播放中</span>
+            <span class="text-xs font-semibold" :class="msg.role === 'user' ? 'text-stone-300' : 'text-stone-500'">
+                {{ Math.max(1, Math.round(msg.content.length / 4)) }}''
+            </span>
+        </div>
+    </div>
+
+    <!-- 转文字触发展示（通过 .stop 阻止冒泡避免触发语音播放） -->
+    <button @click.stop="msg.showTranslation = !msg.showTranslation" 
+            class="text-[10px] text-stone-400 font-bold px-2.5 py-0.5 cursor-pointer hover:text-stone-700 transition select-none">
+        {{ msg.showTranslation ? '隐藏文本 ✕' : '转文字 T' }}
+    </button>
+
+    <!-- 转文字内容气泡 -->
+    <div v-if="msg.showTranslation" 
+         class="text-xs text-stone-700 bg-white/50 backdrop-blur-md p-2.5 rounded-xl border border-white/40 shadow-sm max-w-[240px] break-all leading-relaxed">
+        {{ msg.content }}
+    </div>
+</div>
+
+<div v-else :class="['max-w-[80%] p-3 shadow-sm', msg.type === 'transfer' ? 'bg-orange-400 text-white rounded-[18px_18px_4px_18px] min-w-[200px] border border-orange-300' : msg.type === 'red_packet' ? 'bg-red-500 text-white rounded-[18px_18px_4px_18px] min-w-[200px] border border-red-450' : (msg.role === 'user' ? 'bg-stone-800 text-white rounded-[18px_18px_4px_18px]' : 'bg-white/70 text-stone-800 rounded-[18px_18px_18px_4px] border border-white/50 backdrop-blur-md')]">
+    <div v-if="msg.quoted" :class="['text-[11px] border-b pb-1 mb-1 italic truncate max-w-[200px]', msg.role === 'user' ? 'text-stone-300 border-white/20' : 'text-stone-500 border-stone-200']">「{{ msg.quoted }}」</div>
+    <div v-if="msg.type === 'text'" class="text-[15px] leading-relaxed whitespace-pre-wrap">{{ msg.content }}</div>
+    <img v-else-if="msg.type === 'emoji'" :src="msg.content" class="max-w-[100px] rounded-lg">
+    
+    <!-- 转账卡片内容 -->
+    <div v-else-if="msg.type === 'transfer'" class="flex flex-col">
+        <div class="flex items-center space-x-2">
+            <span class="text-2xl">💸</span>
+            <div>
+                <div class="text-sm font-bold">￥{{ msg.amount.toFixed(2) }}</div>
+                <div class="text-[10px] opacity-80">转账给对方</div>
+            </div>
+        </div>
+        <div class="text-[9px] mt-2 pt-2 border-t border-white/20">微信转账</div>
+    </div>
+
+    <!-- 红包卡片内容 -->
+    <div v-else-if="msg.type === 'red_packet'" class="flex flex-col">
+        <div class="flex items-center space-x-2">
+            <span class="text-2xl">🧧</span>
+            <div class="text-sm font-bold">恭喜发财，大吉大利</div>
+        </div>
+        <div class="text-[9px] mt-2 pt-2 border-t border-white/20">微信红包 - ￥{{ msg.amount.toFixed(2) }}</div>
+    </div>
+    
+    <!-- 充值申请卡片样式 -->
+    <div v-else-if="msg.type === 'recharge_card'" class="p-3 border-l-4 border-amber-500 bg-white text-stone-850 rounded-xl shadow-inner min-w-[200px]">
+        <div class="text-[10px] text-stone-400 font-semibold tracking-wider uppercase mb-1">帮我充值</div>
+        <div class="text-2xl font-extrabold text-stone-800">￥{{ msg.amount }}</div>
+        <div @click="confirmFriendRecharge(msg)" class="text-[10px] text-blue-500 font-bold mt-3 border-t border-stone-150 pt-2 cursor-pointer text-center hover:text-blue-600 transition">点击同意并充值</div>
+    </div>
+</div>
                     </div>
                 </div>
 
@@ -348,7 +437,7 @@
                         <div class="space-y-2">
                             <div v-for="style in writingStyles" :key="style.id" :class="['p-3 rounded-2xl border bg-white transition shadow-sm', style.active ? 'border-amber-400 bg-amber-50/10' : 'border-stone-200']">
                                 <div class="flex justify-between items-center mb-1">
-                                    <span class="font-bold text-xs text-stone-850 flex items-center">
+                                    <span class="font-bold text-xs text-stone-855 flex items-center">
                                         <span v-if="style.active" class="w-1.5 h-1.5 rounded-full bg-amber-500 mr-1.5 inline-block"></span>
                                         {{ style.name }}
                                     </span>
@@ -402,41 +491,62 @@
                     <!-- 加号工具抽屉面板 -->
                     <div v-if="showPlusPanel" class="border-b p-3 bg-stone-50 rounded-t-xl mb-1.5 space-y-3">
                         <div class="flex space-x-6 justify-center">
-                            <!-- 表情包页签切换 -->
-                            <button @click="plusPanelTab = 'emoji'" :class="['flex flex-col items-center space-y-1 p-2 rounded-xl w-14', plusPanelTab === 'emoji' ? 'bg-stone-200/85' : '']">
-                                <span class="text-xl">😊</span>
-                                <span class="text-[9px] text-stone-600 font-bold leading-none mt-1">表情</span>
-                            </button>
-                            <!-- 见面模式触发按钮 -->
-                            <button @click="enterOfflineMode" class="flex flex-col items-center space-y-1 p-2 rounded-xl w-14 hover:bg-stone-200/85 transition">
-                                <span class="text-xl">🏡</span>
-                                <span class="text-[9px] text-stone-600 font-bold leading-none mt-1">见面</span>
-                            </button>
+<!-- 表情包页签切换 -->
+<button @click="showPlusEmoji = !showPlusEmoji" :class="['flex flex-col items-center space-y-1 p-2 rounded-xl w-14', showPlusEmoji ? 'bg-stone-200/85' : '']">
+    <span class="text-xl">😊</span>
+    <span class="text-[9px] text-stone-600 font-bold leading-none mt-1">表情</span>
+</button>
+<!-- 见面模式触发按钮 -->
+<button @click="enterOfflineMode" class="flex flex-col items-center space-y-1 p-2 rounded-xl w-14 hover:bg-stone-200/85 transition">
+    <span class="text-xl">🏡</span>
+    <span class="text-[9px] text-stone-600 font-bold leading-none mt-1">见面</span>
+</button>
+<!-- 转账按钮 -->
+<button @click="handleTransfer" class="flex flex-col items-center space-y-1 p-2 rounded-xl w-14 hover:bg-stone-200/85 transition">
+    <span class="text-xl">💸</span>
+    <span class="text-[9px] text-stone-600 font-bold leading-none mt-1">转账</span>
+</button>
+<!-- 红包按钮 -->
+<button @click="handleRedPacket" class="flex flex-col items-center space-y-1 p-2 rounded-xl w-14 hover:bg-stone-200/85 transition">
+    <span class="text-xl">🧧</span>
+    <span class="text-[9px] text-stone-600 font-bold leading-none mt-1">红包</span>
+</button>
+<!-- 追剧按钮 -->
+<button @click="openTheaterConfig" class="flex flex-col items-center space-y-1 p-2 rounded-xl w-14 hover:bg-stone-200/85 transition">
+    <span class="text-xl">🎬</span>
+    <span class="text-[9px] text-stone-600 font-bold leading-none mt-1">追剧</span>
+</button>
                         </div>
                         
-                        <!-- 表情包内容区 -->
-                        <div v-if="plusPanelTab === 'emoji'" class="grid grid-cols-5 gap-2 max-h-32 overflow-y-auto pt-2 border-t border-stone-200">
-                            <img v-for="e in emojis" :src="e.url" :title="e.name" @click="sendEmoji(e.url)" class="w-full cursor-pointer hover:scale-110 transition h-10 object-contain">
-                        </div>
+<!-- 表情包内容区 -->
+<div v-if="showPlusEmoji" class="grid grid-cols-5 gap-2 max-h-32 overflow-y-auto pt-2 border-t border-stone-200">
+    <img v-for="e in emojis" :src="e.url" :title="e.name" @click="sendEmoji(e.url)" class="w-full cursor-pointer hover:scale-110 transition h-10 object-contain">
+</div>
                     </div>
 
-                    <div class="flex items-center space-x-2">
-                        <!-- 带有美化属性的 + 菜单按钮 -->
-                        <button @click="showPlusPanel = !showPlusPanel" :style="{ opacity: activeFriend && activeFriend.inputBarPlusOpacity !== undefined ? activeFriend.inputBarPlusOpacity / 100 : 1.0 }" class="flex items-center justify-center">
-                            <img v-if="activeFriend && activeFriend.inputBarPlusImg" :src="activeFriend.inputBarPlusImg" class="w-8 h-8 object-contain" />
-                            <span v-else class="text-xl w-8 h-8 rounded-full border border-stone-300 flex items-center justify-center font-bold text-stone-600 hover:bg-stone-100 transition">＋</span>
-                        </button>
-                        
-                        <input v-model="userInput" @keyup.enter="handleBtnClick" type="text" class="flex-1 border rounded px-3 py-2 outline-none" placeholder="输入消息...">
-                        
-                        <!-- 带有美化属性的发送按钮 -->
-                        <button @click="handleBtnClick" 
-                                :style="{ opacity: activeFriend && activeFriend.inputBarSendOpacity !== undefined ? activeFriend.inputBarSendOpacity / 100 : 1.0 }"
-                                :class="(activeFriend && activeFriend.inputBarSendImg) ? 'flex items-center justify-center' : ['px-4 py-2 rounded text-white transition', userInput ? 'bg-stone-800' : 'bg-stone-400']">
-                            <img v-if="activeFriend && activeFriend.inputBarSendImg" :src="activeFriend.inputBarSendImg" class="h-10 object-contain" />
-                            <span v-else>{{ userInput ? '发送' : '续写' }}</span>
-                        </button>
-                    </div>
+<div class="flex items-center space-x-1.5 w-full">
+    <!-- ＋ 菜单按钮 (增加 shrink-0 避免挤压) -->
+    <button @click="showPlusPanel = !showPlusPanel" :style="{ opacity: activeFriend && activeFriend.inputBarPlusOpacity !== undefined ? activeFriend.inputBarPlusOpacity / 100 : 1.0 }" class="flex items-center justify-center shrink-0">
+        <img v-if="activeFriend && activeFriend.inputBarPlusImg" :src="activeFriend.inputBarPlusImg" class="w-8 h-8 object-contain" />
+        <span v-else class="text-xl w-8 h-8 rounded-full border border-stone-300 flex items-center justify-center font-bold text-stone-600 hover:bg-stone-100 transition">＋</span>
+    </button>
+    
+    <!-- 输入框 (增加 min-w-0 确保宽度自适应) -->
+    <input v-model="userInput" @keyup.enter="handleBtnClick" type="text" class="flex-1 min-w-0 border rounded px-3 py-2 outline-none" placeholder="输入消息...">
+
+    <!-- 语音图标按钮 (宽度 w-12 高度 h-9，与发送按钮完全等大) -->
+    <button @click="sendUserVoice" class="w-12 h-9 flex items-center justify-center rounded-lg bg-stone-100 border border-stone-200 text-stone-600 hover:bg-stone-200 transition shrink-0">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z"></path></svg>
+    </button>
+
+    <!-- 缩小后的发送/续写按钮 (宽度 w-12 高度 h-9，与语音按钮完全等大) -->
+    <button @click="handleBtnClick" 
+            :style="{ opacity: activeFriend && activeFriend.inputBarSendOpacity !== undefined ? activeFriend.inputBarSendOpacity / 100 : 1.0 }"
+            :class="(activeFriend && activeFriend.inputBarSendImg) ? 'flex items-center justify-center shrink-0 w-12 h-9' : ['w-12 h-9 flex items-center justify-center rounded-lg text-[13px] font-bold text-white transition shrink-0', userInput ? 'bg-stone-800' : 'bg-stone-400']">
+        <img v-if="activeFriend && activeFriend.inputBarSendImg" class="h-8 w-8 object-contain" />
+        <span v-else>{{ userInput ? '发送' : '续写' }}</span>
+    </button>
+</div>
                 </div>
 
                 <!-- 【G. 线下见面模式专属输入栏】 -->
@@ -468,7 +578,7 @@
                         <div class="w-10 h-10 bg-gradient-to-tr from-stone-300 to-stone-100 rounded-full flex items-center justify-center mr-3 shrink-0 text-stone-600 font-bold border border-white">
                             {{ friend.name[0] }}
                         </div>
-                        <span class="truncate font-medium text-stone-800">{{ friend.name }}</span>
+                        <span class="truncate font-medium text-stone-850">{{ friend.name }}</span>
                     </div>
                 </div>
             </div>
@@ -525,6 +635,29 @@
                     </div>
                 </section>
 
+                <!-- 新增：MiniMax TTS 语音合成接口配置 -->
+                <section class="bg-white/80 p-4 rounded-3xl shadow-sm border border-white">
+                    <h3 class="font-bold border-b pb-2 mb-4 text-stone-700">MiniMax 语音设置</h3>
+                    <div class="space-y-3 text-sm">
+                        <div>
+                            <label class="block text-gray-600 mb-1">接口代理/反代地址</label>
+                            <input v-model="minimaxConfig.baseUrl" type="text" class="w-full border p-2 rounded-xl" placeholder="输入反代后的域名，如 https://minimax.abc.com">
+                        </div>
+                        <div>
+                            <label class="block text-gray-600 mb-1">API 密钥 (Key)</label>
+                            <input v-model="minimaxConfig.apiKey" type="password" class="w-full border p-2 rounded-xl" placeholder="输入 MiniMax API Key">
+                        </div>
+                        <div>
+                            <label class="block text-gray-600 mb-1">企业/安全组 ID (Group ID)</label>
+                            <input v-model="minimaxConfig.groupId" type="text" class="w-full border p-2 rounded-xl" placeholder="输入 MiniMax Group ID">
+                        </div>
+                        <div>
+                            <label class="block text-gray-600 mb-1">合成模型名称</label>
+                            <input v-model="minimaxConfig.model" type="text" class="w-full border p-2 rounded-xl" placeholder="speech-01">
+                        </div>
+                    </div>
+                </section>
+
                 <!-- 表情包管理 (可打开/折叠样式) -->
                 <section class="bg-white/80 p-4 rounded-3xl shadow-sm border border-white relative">
                     <div class="flex justify-between items-center border-b pb-2 mb-4 cursor-pointer" @click="stickerSectionExpanded = !stickerSectionExpanded">
@@ -559,6 +692,20 @@
                     </div>
                 </section>
 
+                <!-- 幸运刮刮乐入口 -->
+                <section class="bg-white/80 p-4 rounded-3xl shadow-sm border border-white cursor-pointer hover:bg-white transition" @click="openLottery">
+                    <div class="flex justify-between items-center">
+                        <div class="flex items-center space-x-3">
+                            <span class="text-xl">🎟️</span>
+                            <span class="font-bold text-stone-700">幸运刮刮乐</span>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <span class="text-xs text-stone-400 font-semibold">试试手气</span>
+                            <span class="text-stone-400 text-xs">〉</span>
+                        </div>
+                    </div>
+                </section>
+
                 <!-- 收藏入口 -->
                 <section class="bg-white/80 p-4 rounded-3xl shadow-sm border border-white cursor-pointer hover:bg-white transition" @click="openFavorites">
                     <div class="flex justify-between items-center">
@@ -578,7 +725,7 @@
             <div v-if="currentView === 'wallet'" class="flex flex-col items-center justify-center p-6 space-y-6 bg-white/80 rounded-3xl border border-white shadow-sm min-h-[400px]">
                 <div class="text-6xl animate-bounce">🪙</div>
                 <div class="text-sm text-stone-500 font-medium">我的零钱</div>
-                <div class="text-4xl font-extrabold text-stone-850">￥{{ walletData.balance.toFixed(2) }}</div>
+                <div class="text-4xl font-extrabold text-stone-855">￥{{ walletData.balance.toFixed(2) }}</div>
                 
                 <div class="w-full space-y-3 pt-6">
                     <button @click="showRechargeOptions = true" class="w-full bg-stone-800 text-white p-3 rounded-xl font-bold hover:bg-stone-900 transition">充值</button>
@@ -637,6 +784,123 @@
                     <div class="flex justify-end space-x-3 pt-2 border-t border-stone-100">
                         <button @click="editWorldview(wv)" class="text-xs text-stone-600 font-bold hover:text-black">编辑</button>
                         <button @click="deleteWorldview(wv.id)" class="text-xs text-red-500 font-bold hover:text-red-700">删除</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 彩票/刮刮乐主视图 -->
+            <div v-if="currentView === 'lottery'" class="space-y-4 p-2">
+                <!-- 顶部返回 -->
+                <div class="flex items-center justify-between border-b border-stone-250 pb-3 mb-2">
+                    <button @click="currentView = 'list'; activeTab = 'settings'" class="text-sm font-bold text-stone-600 hover:text-black">← 返回</button>
+                    <span class="font-bold text-stone-800 text-base">幸运刮刮乐</span>
+                    <div class="w-10"></div>
+                </div>
+
+                <!-- 钱包余额显示 -->
+                <div class="bg-white/80 p-4 rounded-3xl border border-white shadow-sm flex justify-between items-center text-xs">
+                    <span class="text-stone-500 font-medium">我的零钱余额</span>
+                    <span class="font-bold text-stone-800 text-sm">￥{{ walletData.balance.toFixed(2) }}</span>
+                </div>
+
+                <!-- 购彩区 -->
+                <div class="grid grid-cols-2 gap-3">
+                    <!-- 免费票 -->
+                    <div class="bg-white/80 p-4 rounded-3xl border border-white shadow-sm flex flex-col items-center justify-between text-center space-y-2">
+                        <span class="text-3xl">🎫</span>
+                        <span class="font-bold text-stone-800 text-xs">普通刮刮乐</span>
+                        <span class="text-[10px] text-stone-400">中奖最高：500元</span>
+                        <span class="text-xs font-bold text-stone-600">售价：￥0</span>
+                        <button @click="buyLottery('free')" class="w-full bg-stone-800 text-white text-xs py-2 rounded-xl hover:bg-stone-900 font-bold transition">直接购买</button>
+                    </div>
+                    <!-- 收费票 -->
+                    <div class="bg-white/80 p-4 rounded-3xl border border-white shadow-sm flex flex-col items-center justify-between text-center space-y-2">
+                        <span class="text-3xl">💎</span>
+                        <span class="font-bold text-stone-800 text-xs">至尊刮刮乐</span>
+                        <span class="text-[10px] text-stone-400">中奖最高：5000元</span>
+                        <span class="text-xs font-bold text-amber-600">售价：￥10</span>
+                        <button @click="buyLottery('paid')" class="w-full bg-amber-500 text-white text-xs py-2 rounded-xl hover:bg-amber-600 font-bold transition">花钱购买</button>
+                    </div>
+                </div>
+
+                <!-- 刮奖展示区 -->
+                <div v-if="activeLottery" class="bg-amber-50/60 p-5 rounded-3xl border border-amber-200/50 shadow-md text-center space-y-4">
+                    <div class="border-b border-dashed border-amber-300 pb-2">
+                        <span class="text-[10px] bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-bold">
+                            {{ activeLottery.type === 'free' ? '普通刮刮乐' : '至尊刮刮乐' }}
+                        </span>
+                    </div>
+
+                    <!-- 刮开前的图层 -->
+                    <div v-if="!activeLottery.scratched" @click="scratchLottery" class="bg-stone-300 hover:bg-stone-400 text-stone-600 font-bold text-sm py-12 rounded-2xl border border-stone-400/50 cursor-pointer shadow-inner transition select-none">
+                        点击此处刮奖 👆
+                    </div>
+
+                    <!-- 刮开后的中奖结果 -->
+                    <div v-else class="bg-white border-2 border-amber-400 p-6 rounded-2xl shadow-inner space-y-3 animate-fade-in">
+                        <div v-if="activeLottery.prize > 0">
+                            <div class="text-xs text-amber-600 font-bold">🎉 恭喜中奖！</div>
+                            <div class="text-3xl font-extrabold text-stone-850 my-1">￥{{ activeLottery.prize.toFixed(2) }}</div>
+                        </div>
+                        <div v-else class="text-stone-505 text-sm font-semibold py-4">
+                            😭 谢谢惠顾，再接再厉！
+                        </div>
+                        <button @click="activeLottery = null" class="bg-stone-800 text-white text-xs px-4 py-1.5 rounded-full font-bold">收下</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 好友状态栏页面 -->
+            <div v-if="currentView === 'status' && activeFriend" class="space-y-4 p-2">
+                <!-- 顶部返回 -->
+                <div class="flex items-center justify-between border-b border-stone-250 pb-3 mb-2">
+                    <button @click="currentView = 'chat'" class="text-sm font-bold text-stone-600 hover:text-black">← 返回</button>
+                    <span class="font-bold text-stone-800 text-base">{{ activeFriend.name }} 的状态</span>
+                    <div class="w-10"></div>
+                </div>
+
+                <!-- 1. 角色心声板块 -->
+                <div class="bg-white/80 p-5 rounded-3xl border border-white shadow-sm space-y-2">
+                    <h3 class="font-bold text-stone-800 text-sm flex items-center gap-1.5">
+                        <span>💬</span> Ta的心声
+                    </h3>
+                    <div class="p-3 bg-stone-50 rounded-2xl border border-stone-100 text-xs italic text-stone-600 leading-relaxed whitespace-pre-wrap shadow-inner min-h-[60px]">
+                        {{ activeFriend.currentThoughts || '（当前没有特别的心里话，多和 Ta 聊聊吧...）' }}
+                    </div>
+                </div>
+
+                <!-- 2. 角色钱包余额 -->
+                <div class="bg-white/80 p-5 rounded-3xl border border-white shadow-sm flex justify-between items-center">
+                    <div class="space-y-0.5">
+                        <h3 class="font-bold text-stone-800 text-sm flex items-center gap-1.5">
+                            <span>🪙</span> Ta的余额
+                        </h3>
+                        <p class="text-[10px] text-stone-400">收发红包或转账时会自动同步金额</p>
+                    </div>
+                    <span class="font-extrabold text-stone-800 text-lg">￥{{ (activeFriend.balance !== undefined ? activeFriend.balance : 800.00).toFixed(2) }}</span>
+                </div>
+
+                <!-- 3. 角色背包系统 -->
+                <div class="bg-white/80 p-5 rounded-3xl border border-white shadow-sm space-y-3">
+                    <h3 class="font-bold text-stone-800 text-sm flex items-center gap-1.5">
+                        <span>🎒</span> Ta的背包物品
+                    </h3>
+                    
+                    <!-- 物品列表 -->
+                    <div class="flex flex-wrap gap-2 max-h-40 overflow-y-auto pr-1">
+                        <div v-for="(item, idx) in (activeFriend.backpack || [])" :key="idx" class="bg-stone-100 border border-stone-200 text-xs px-2.5 py-1.5 rounded-2xl flex items-center gap-1.5 text-stone-700">
+                            <span>{{ item }}</span>
+                            <button @click="removeBackpackItem(idx)" class="text-red-400 hover:text-red-600 font-bold ml-1">×</button>
+                        </div>
+                        <div v-if="!(activeFriend.backpack && activeFriend.backpack.length)" class="text-stone-400 text-xs py-4 text-center w-full">
+                            背包空空如也...
+                        </div>
+                    </div>
+
+                    <!-- 手动添加物品 -->
+                    <div class="flex gap-2 pt-2 border-t border-stone-100">
+                        <input v-model="newItemName" type="text" class="flex-1 border border-stone-200 rounded-xl px-3 py-1.5 text-xs outline-none bg-stone-50/50 focus:border-stone-400" placeholder="手动添加物品名称...">
+                        <button @click="addBackpackItem" class="bg-stone-800 text-white text-xs px-4 py-1.5 rounded-xl font-bold hover:bg-stone-900 transition">添加</button>
                     </div>
                 </div>
             </div>
@@ -726,6 +990,15 @@
                             管理与选择
                         </button>
                     </div>
+                    <!-- 新增：好友语音功能配置开关 -->
+                    <div class="flex items-center justify-between border-t pt-3">
+                        <span class="font-medium">🎙️ 允许角色回复语音</span>
+                        <input type="checkbox" v-model="activeFriend.allowVoice" class="w-5 h-5 accent-stone-800">
+                    </div>
+                    <div v-if="activeFriend.allowVoice" class="flex items-center justify-between border-t pt-3">
+                        <span class="font-medium">🔊 语音音色 ID (Voice ID)</span>
+                        <input type="text" v-model="activeFriend.voiceId" class="w-32 border p-1 rounded text-xs outline-none text-right font-bold" placeholder="例如: cherry">
+                    </div>
                     <div class="border-t pt-3">
                         <button @click="forceTriggerMoment(activeFriend)" class="w-full p-2.5 bg-stone-100 text-stone-700 rounded-xl border border-stone-200 hover:bg-stone-200/50 text-xs font-semibold transition">
                             ✨ 强制让此 AI 发一条朋友圈
@@ -767,7 +1040,7 @@
         <!-- 弹窗：添加好友 -->
         <div v-if="showAddFriendModal" class="absolute inset-0 bg-black/50 flex items-center justify-center p-6 z-50">
             <div class="bg-white rounded-2xl w-full p-5">
-                <h3 class="font-bold mb-4 text-stone-800">添加好友</h3>
+                <h3 class="font-bold mb-4 text-stone-850">添加好友</h3>
                 <input v-model="newFriendName" type="text" class="w-full border p-2 mb-4 rounded-xl outline-none" placeholder="好友昵称">
                 
                 <!-- 新增：从角色大厅添加按钮 -->
@@ -900,7 +1173,7 @@
                         </div>
                         <!-- 右侧内容 -->
                         <div class="flex-1 space-y-2">
-                            <div class="font-bold text-stone-800 text-sm">{{ m.name }}</div>
+                            <div class="font-bold text-stone-805 text-sm">{{ m.name }}</div>
                             <div class="text-stone-700 text-xs leading-relaxed whitespace-pre-wrap">{{ m.text }}</div>
                             
                             <!-- 图片展示网格 -->
@@ -913,7 +1186,7 @@
 
                             <!-- 底部操作条 -->
                             <div class="flex justify-between items-center text-[10px] text-stone-400 pt-1">
-                                <span>刚刚 <span v-if="m.visibleTo && m.visibleTo.length > 0" class="text-stone-500 font-medium ml-1">🔒部分可见</span></span>
+                                <span>刚刚 <span v-if="m.visibleTo && m.visibleTo.length > 0" class="text-stone-505 font-medium ml-1">🔒部分可见</span></span>
                                 <div class="relative">
                                     <!-- 操作展开按钮 -->
                                     <button @click.stop="toggleMomentMenu(m.id)" class="bg-stone-100 hover:bg-stone-200 text-stone-600 px-2.5 py-0.5 rounded-full font-bold transition">..</button>
@@ -993,7 +1266,7 @@
 
         <!-- 朋友圈可见性选择视图 -->
         <div v-if="currentView === 'moments-visibility'" class="absolute inset-0 flex flex-col h-full bg-[#f6f6f6] rounded-2xl overflow-hidden border border-white/40 z-50">
-            <header class="border-b border-white/30 text-stone-800 p-4 flex justify-between items-center shrink-0 glass-effect rounded-2xl mb-2">
+            <header class="border-b border-white/30 text-stone-850 p-4 flex justify-between items-center shrink-0 glass-effect rounded-2xl mb-2">
                 <div class="flex items-center space-x-2 min-w-[60px]">
                     <button @click="currentView = 'moments-editor'" class="text-sm font-bold text-stone-600 hover:text-black">〈 返回</button>
                 </div>
@@ -1165,18 +1438,93 @@
                 </div>
             </div>
         </div>
-        <input type="file" ref="inputBarFileInput" class="hidden" accept="image/*" @change="handleInputBarUpload">
+    <input type="file" ref="inputBarFileInput" class="hidden" accept="image/*" @change="handleInputBarUpload">
+
+    <!-- 追剧配置弹窗 -->
+    <div v-if="showTheaterConfigModal" class="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-6 z-[80]">
+        <div class="bg-white rounded-2xl w-full max-w-xs p-5 shadow-xl space-y-4">
+            <h3 class="font-bold text-stone-800 text-center">影院配置</h3>
+            
+            <!-- 选项卡按钮 -->
+            <div class="flex bg-stone-100 rounded-xl p-1 text-xs">
+                <button @click="theaterSource = 'online'" :class="['flex-1 py-1.5 rounded-lg text-center', theaterSource === 'online' ? 'bg-white font-bold shadow-sm' : 'text-stone-500']">在线直链</button>
+                <button @click="theaterSource = 'local'" :class="['flex-1 py-1.5 rounded-lg text-center', theaterSource === 'local' ? 'bg-white font-bold shadow-sm' : 'text-stone-500']">本地文件</button>
+            </div>
+
+            <input type="text" v-model="theaterVideoName" class="w-full border p-2.5 rounded-xl text-sm outline-none focus:border-stone-500 bg-stone-50/50" placeholder="输入剧名（如：甄嬛传）">
+
+            <!-- 在线链接输入框 -->
+            <div v-if="theaterSource === 'online'" class="space-y-3">
+                <div class="text-[10px] text-stone-400 font-bold">请选择观看方式：</div>
+                <div class="flex gap-2">
+                    <button @click="selectedOnlineType = 'bili'" :class="['flex-1 py-1.5 rounded-lg text-xs transition', selectedOnlineType === 'bili' ? 'bg-pink-500 text-white font-bold' : 'bg-stone-100 text-stone-600']">B站网页看</button>
+                    <button @click="selectedOnlineType = 'link'" :class="['flex-1 py-1.5 rounded-lg text-xs transition', selectedOnlineType === 'link' ? 'bg-blue-500 text-white font-bold' : 'bg-stone-100 text-stone-600']">MP4直链看</button>
+                </div>
+                <input type="text" v-model="theaterVideoUrl" class="w-full border p-2.5 rounded-xl text-xs outline-none focus:border-stone-500 bg-stone-50/50" :placeholder="selectedOnlineType === 'bili' ? '可选：粘贴B站视频链接' : '必填：请粘贴MP4直链'">
+            </div>
+
+            <!-- 本地上传按钮 -->
+            <div v-if="theaterSource === 'local'" class="text-center space-y-2">
+                <button class="w-full py-2 bg-stone-100 border border-stone-200 text-stone-700 rounded-xl text-xs font-semibold" @click="triggerTheaterFilePicker">选择本地视频文件</button>
+                <input type="file" ref="theaterFilePicker" accept="video/*" class="hidden" @change="handleTheaterFile">
+                <div class="text-[10px] text-green-600 font-bold" v-if="localVideoFilename">{{ localVideoFilename }}</div>
+            </div>
+
+            <div class="flex space-x-2">
+                <button @click="showTheaterConfigModal = false" class="flex-1 p-2.5 bg-gray-200 rounded-xl text-stone-600 text-sm font-medium">取消</button>
+                <button @click="startTheater" class="flex-1 p-2.5 bg-stone-800 text-white rounded-xl text-sm font-medium">开播</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 全屏影院大蒙层 -->
+    <div v-if="showFullTheaterOverlay" class="fixed inset-0 bg-black z-[9999] overflow-hidden flex flex-col justify-center items-center">
+        <!-- 123云盘/本地视频播放器 -->
+        <video ref="theaterVideoPlayer" v-show="theaterSource === 'local' || (theaterSource === 'online' && selectedOnlineType === 'link')" class="w-full h-full" controls playsinline></video>
+        
+        <!-- B站专用播放器容器 -->
+        <iframe ref="theaterBiliPlayer" v-show="theaterSource === 'online' && selectedOnlineType === 'bili'" class="w-full h-full border-none absolute inset-0 z-[1]" allowfullscreen="true" sandbox="allow-forms allow-scripts allow-same-origin allow-popups allow-storage-access-by-user-activation allow-top-navigation-by-user-activation"></iframe>
+        
+        <!-- 退出按钮 -->
+        <div class="absolute top-5 left-5 text-white text-2xl drop-shadow-md cursor-pointer z-[10006]" @click="exitTheater">✕</div>
+
+        <!-- 桌宠角色 -->
+        <div id="theater-pet" class="absolute bottom-20 right-5 w-[65px] h-[65px] cursor-pointer z-[10005] flex items-center justify-center" @click="showPetChat = !showPetChat" style="touch-action: none;">
+            <!-- AI 回复气泡 -->
+            <div v-if="petBubbleText" class="absolute bottom-[75px] right-0 bg-white p-3 rounded-2xl rounded-br-none w-44 text-xs text-stone-700 leading-relaxed shadow-lg pointer-events-none word-break-break-all">
+                {{ petBubbleText }}
+            </div>
+            
+            <div class="w-[60px] h-[60px] rounded-full border-2 border-white overflow-hidden shadow-lg bg-stone-200 flex items-center justify-center font-bold text-stone-600 text-lg">
+                {{ activeFriend ? activeFriend.name[0] : 'AI' }}
+            </div>
+
+            <!-- 影院专用简易输入框 -->
+            <div v-if="showPetChat" class="absolute top-1 right-[75px] w-52 h-12 bg-black/60 p-1.5 rounded-full flex items-center gap-1.5" @click.stop>
+                <input type="text" v-model="petInput" class="flex-1 rounded-full border-none px-3 py-1 text-[11px] outline-none bg-white text-stone-805" placeholder="聊聊剧情..." @keyup.enter="sendPetMsg">
+                <button class="bg-[#07c160] text-white border-none w-12 h-8 rounded-full text-[11px] shrink-0 font-medium" @click="sendPetMsg">发送</button>
+            </div>
 
         </div>
+    </div>
+
+    <!-- 悬浮返回球 -->
+    <div id="floating-ball" @click="backToHome"></div>
 
     </div>
+
+</div>
 
     <script>
         const { createApp, ref, computed, nextTick, watch } = Vue;
 
         createApp({
-            setup() {
-                const activeTab = ref('chat');
+    setup() {
+        // 用于全局管理当前正在播放的 Audio 对象与语音消息数据
+        let currentAudio = null;
+        let currentPlayingMsg = null;
+
+        const activeTab = ref('chat');
                 const currentView = ref('list'); // list or chat
                 const activeFriend = ref(null);
 
@@ -1187,6 +1535,14 @@
                 const worldviews = ref(JSON.parse(localStorage.getItem('chat_worldviews') || '[]'));
                 const showWorldviewModal = ref(false);
                 const worldviewForm = ref({ id: null, name: '', content: '' });
+
+                // 新增：MiniMax 语音接口配置状态
+                const minimaxConfig = ref({
+                    baseUrl: localStorage.getItem('chat_minimax_url') || 'https://api.minimax.chat',
+                    apiKey: localStorage.getItem('chat_minimax_key') || '',
+                    groupId: localStorage.getItem('chat_minimax_group') || '',
+                    model: localStorage.getItem('chat_minimax_model') || 'speech-01'
+                });
 
                 // 线下/加号菜单控制状态
                 const showPlusPanel = ref(false);
@@ -1203,6 +1559,55 @@
                 const ibActiveTab = ref('bg');
                 const headerFileInput = ref(null);
                 const inputBarFileInput = ref(null);
+
+                // 追剧功能相关状态
+                const showTheaterConfigModal = ref(false);
+                const showFullTheaterOverlay = ref(false);
+                const theaterSource = ref('online');
+                const theaterVideoName = ref('');
+                const theaterVideoUrl = ref('');
+                const selectedOnlineType = ref('link');
+                const localVideoUrl = ref('');
+                const localVideoFilename = ref('');
+                const isWatching = ref(false);
+                const showPetChat = ref(false);
+                const petInput = ref('');
+                const petBubbleText = ref('');
+                const theaterFilePicker = ref(null);
+                const theaterVideoPlayer = ref(null);
+                const theaterBiliPlayer = ref(null);
+
+                // 状态栏与背包功能相关状态
+                const newItemName = ref('');
+
+                const openStatusPage = () => {
+                    if (activeFriend.value) {
+                        if (activeFriend.value.balance === undefined) {
+                            activeFriend.value.balance = 800.00;
+                        }
+                        if (activeFriend.value.backpack === undefined) {
+                            activeFriend.value.backpack = [];
+                        }
+                    }
+                    currentView.value = 'status';
+                };
+
+                const addBackpackItem = () => {
+                    if (!activeFriend.value || !newItemName.value.trim()) return;
+                    if (activeFriend.value.backpack === undefined) {
+                        activeFriend.value.backpack = [];
+                    }
+                    if (!activeFriend.value.backpack.includes(newItemName.value.trim())) {
+                        activeFriend.value.backpack.push(newItemName.value.trim());
+                    }
+                    newItemName.value = '';
+                };
+
+                const removeBackpackItem = (idx) => {
+                    if (activeFriend.value && activeFriend.value.backpack) {
+                        activeFriend.value.backpack.splice(idx, 1);
+                    }
+                };
                 
                 // 线下模式特有：文风和开场白状态数据
                 const newStyleContent = ref('');
@@ -1280,6 +1685,80 @@
                 const favorites = ref(JSON.parse(localStorage.getItem('chat_favorites') || '[]'));
                 const quotedText = ref("");
 
+                // 4. 彩票/刮刮乐数据定义
+                const activeLottery = ref(null);
+
+                const openLottery = () => {
+                    currentView.value = 'lottery';
+                };
+
+                const buyLottery = (type) => {
+                    if (activeLottery.value && !activeLottery.value.scratched) {
+                        return alert("你还有一张没刮开的彩票，请先刮奖！");
+                    }
+                    if (type === 'paid') {
+                        if (walletData.value.balance < 10) {
+                            return alert("钱包余额不足！当前余额为：￥" + walletData.value.balance.toFixed(2));
+                        }
+                        // 扣减余额并写入钱包历史记录
+                        walletData.value.balance -= 10;
+                        walletData.value.history.push({
+                            title: '购买至尊刮刮乐',
+                            amount: '-10.00',
+                            time: new Date().toLocaleString()
+                        });
+                    }
+                    activeLottery.value = {
+                        type: type,
+                        scratched: false,
+                        prize: 0
+                    };
+                };
+
+                const scratchLottery = () => {
+                    if (!activeLottery.value || activeLottery.value.scratched) return;
+                    
+                    const rand = Math.random();
+                    let prize = 0;
+                    
+                    if (activeLottery.value.type === 'free') {
+                        // 免费刮刮乐中奖逻辑 (30% 概率中奖)
+                        if (rand < 0.70) {
+                            prize = 0; // 谢谢惠顾
+                        } else if (rand < 0.95) {
+                            prize = parseFloat((Math.random() * 5 + 1).toFixed(2)); // 1元 - 6元
+                        } else if (rand < 0.99) {
+                            prize = parseFloat((Math.random() * 50 + 10).toFixed(2)); // 10元 - 60元
+                        } else {
+                            prize = parseFloat((Math.random() * 400 + 100).toFixed(2)); // 100元 - 500元
+                        }
+                    } else {
+                        // 10元刮刮乐中奖逻辑 (50% 概率中奖)
+                        if (rand < 0.50) {
+                            prize = 0; // 谢谢惠顾
+                        } else if (rand < 0.85) {
+                            prize = parseFloat((Math.random() * 20 + 5).toFixed(2)); // 5元 - 25元
+                        } else if (rand < 0.97) {
+                            prize = parseFloat((Math.random() * 150 + 50).toFixed(2)); // 50元 - 200元
+                        } else {
+                            prize = parseFloat((Math.random() * 4000 + 1000).toFixed(2)); // 1000元 - 5000元
+                        }
+                    }
+
+                    activeLottery.value.prize = prize;
+                    activeLottery.value.scratched = true;
+
+                    // 如果中奖，增加钱包余额并记录历史
+                    if (prize > 0) {
+                        walletData.value.balance += prize;
+                        walletData.value.history.push({
+                            title: activeLottery.value.type === 'free' ? '普通刮刮乐中奖' : '至尊刮刮乐中奖',
+                            amount: '+' + prize.toFixed(2),
+                            time: new Date().toLocaleString()
+                        });
+                    }
+                };
+
                 const activeTabName = computed(() => {
                     if(currentView.value === 'chat') return activeFriend.value?.name;
                     if(currentView.value === 'wallet') return '零钱';
@@ -1289,7 +1768,7 @@
                 });
 
                 // 监听数据变化并持久化
-                watch([friends, chatHistory, emojis, presets, walletData, favorites, offlineChatHistory, writingStyles, openingRemarks, worldviews], () => {
+                watch([friends, chatHistory, emojis, presets, walletData, favorites, offlineChatHistory, writingStyles, openingRemarks, worldviews, minimaxConfig], () => {
                     localStorage.setItem('chat_friends', JSON.stringify(friends.value));
                     localStorage.setItem('chat_history', JSON.stringify(chatHistory.value));
                     localStorage.setItem('chat_emojis', JSON.stringify(emojis.value));
@@ -1300,6 +1779,10 @@
                     localStorage.setItem('chat_writing_styles', JSON.stringify(writingStyles.value));
                     localStorage.setItem('chat_opening_remarks', JSON.stringify(openingRemarks.value));
                     localStorage.setItem('chat_worldviews', JSON.stringify(worldviews.value));
+                    localStorage.setItem('chat_minimax_url', minimaxConfig.value.baseUrl);
+                    localStorage.setItem('chat_minimax_key', minimaxConfig.value.apiKey);
+                    localStorage.setItem('chat_minimax_group', minimaxConfig.value.groupId);
+                    localStorage.setItem('chat_minimax_model', minimaxConfig.value.model);
                 }, { deep: true });
 
                 // 新增：角色大厅云端读写及大厅操作逻辑函数
@@ -1694,7 +2177,11 @@ ${wvPrompt}${mapPrompt}${stylePrompt}
 1. 沉浸式神态动作描写：请在回复中穿插丰富的神态、动作、心理或环境描写（使用括号如 "（红着脸低下头）" 或星号如 "*手足无措地摆摆手*" 包裹，突出面对面互动的细节与画面感）。
 2. 长对话输出：面对面时你可以输出更加完整、深度的长句和连续对话，不再需要像微信打字那样碎片化拆分发送。
 3. 一次仅输出一个完整回复气泡：请将你想表达的语言融合在一个气泡内，禁止通过多行换行分割来伪造多段气泡，仅回复单条完整信息（类似于网页/DeepSeek App单次互动气泡）。
-4. 真实活人语气：依旧继承你们的亲密度或人设口吻，使用口语语气词（啊、呢、哈），禁止AI官方腔。`;
+4. 真实活人语气：依旧继承你们的亲密度或人设口吻，使用口语语气词（啊、呢、哈），禁止AI官方腔。
+
+# 特殊隐秘规则 (必须遵守):
+1. 请在你回复文本的最后，另起一行输出一个 [THOUGHTS] 标签（格式为：[THOUGHTS]你的心理活动描述），描述你当前这段话背后隐藏的、最真实的心理想法。这段内容不要写入普通的会话气泡中。
+2. 如果在本次线下相处中你【给予、获得、制作、买卖或使用了】任何具体的实物物品，请在其后另起一行输出 [ITEM_ADD]物品名称 标签（例如：[ITEM_ADD]精致的手工陶杯），方便系统自动收纳至背包。若无物品互动则不输出。`;
 
                         let cleanBaseUrl = apiConfig.value.baseUrl.trim().replace(/\/$/, "");
                         if (cleanBaseUrl.endsWith("/chat/completions")) {
@@ -1726,6 +2213,38 @@ ${wvPrompt}${mapPrompt}${stylePrompt}
 
                         const data = await res.json();
                         let reply = data.choices[0].message.content.trim();
+
+                        // 初始化好友数据中的余额和背包（如果未定义）
+                        if (activeFriend.value.balance === undefined) {
+                            activeFriend.value.balance = 800.00;
+                        }
+                        if (activeFriend.value.backpack === undefined) {
+                            activeFriend.value.backpack = [];
+                        }
+
+                        // 提取 [ITEM_ADD] 标签
+                        if (reply.includes("[ITEM_ADD]")) {
+                            const itemMatches = reply.match(/\[ITEM_ADD\]([^\n\r]+)/g);
+                            if (itemMatches) {
+                                itemMatches.forEach(match => {
+                                    const itemName = match.replace("[ITEM_ADD]", "").trim();
+                                    if (itemName && !activeFriend.value.backpack.includes(itemName)) {
+                                        activeFriend.value.backpack.push(itemName);
+                                    }
+                                });
+                            }
+                            reply = reply.replace(/\[ITEM_ADD\][^\n\r]+/g, "").trim();
+                        }
+
+                        // 提取 [THOUGHTS] 标签
+                        if (reply.includes("[THOUGHTS]")) {
+                            const thoughtsParts = reply.split("[THOUGHTS]");
+                            reply = thoughtsParts[0].trim();
+                            const extractedThoughts = thoughtsParts[1].trim();
+                            if (extractedThoughts) {
+                                activeFriend.value.currentThoughts = extractedThoughts;
+                            }
+                        }
 
                         offlineChatHistory.value[key].pop(); // 移除“互动中...”提示
                         offlineChatHistory.value[key].push({ role: 'assistant', type: 'text', content: reply });
@@ -1800,6 +2319,123 @@ ${wvPrompt}${mapPrompt}${stylePrompt}
                         presets.value.push({ ...apiConfig.value, name });
                     }
                 };
+
+// 新增/优化：MiniMax TTS 语音合成接口调用与多重播放排他逻辑
+const playVoice = async (msg, event) => {
+    // 1. 拦截未配置 Key 的情况并弹窗引导跳转
+    if (!minimaxConfig.value.apiKey || !minimaxConfig.value.groupId) {
+        alert("尚未配置语音引擎接口！请前往 [我] -> [设置] -> [MiniMax 语音设置] 中配置您的 API 密钥与 ID。");
+        currentView.value = 'list';
+        activeTab.value = 'settings';
+        return;
+    }
+
+    // 2. 如果点击当前正在播放的语音，则立刻暂停并结束状态
+    if (msg.isPlaying) {
+        if (currentAudio) {
+            currentAudio.pause();
+        }
+        msg.isPlaying = false;
+        currentAudio = null;
+        currentPlayingMsg = null;
+        return;
+    }
+
+    // 3. 停止当前其他正在播放的语音条，使其回到正常文本气泡态
+    if (currentAudio) {
+        currentAudio.pause();
+    }
+    if (currentPlayingMsg) {
+        currentPlayingMsg.isPlaying = false;
+    }
+
+    // 4. 将状态锁定到当前点击的这行消息上
+    msg.isPlaying = true;
+    currentPlayingMsg = msg;
+
+    // 5. 对 API URL 前缀做去尾过滤与安全格式化
+    let proxyUrl = minimaxConfig.value.baseUrl.trim().replace(/\/$/, "");
+    if (proxyUrl.endsWith("/v1")) {
+        proxyUrl = proxyUrl.replace(/\/v1$/, "");
+    }
+
+    let audioUrl = null;
+
+    try {
+        const response = await fetch(`${proxyUrl}/v1/text_to_speech?group_id=${minimaxConfig.value.groupId.trim()}`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${minimaxConfig.value.apiKey.trim()}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                model: minimaxConfig.value.model || "speech-01",
+                text: msg.content,
+                voice_setting: {
+                    voice_id: (activeFriend.value && activeFriend.value.voiceId) ? activeFriend.value.voiceId : "cherry",
+                    speed: 1.0,
+                    vol: 1.0,
+                    pitch: 0
+                },
+                audio_setting: {
+                    sample_rate: 32000,
+                    bitrate: 128000,
+                    format: "mp3"
+                }
+            })
+        });
+
+        if (!response.ok) {
+            const errDetail = await response.text();
+            throw new Error(`MiniMax 接口响应失败: ${response.status} - ${errDetail}`);
+        }
+
+        const audioBlob = await response.blob();
+        audioUrl = URL.createObjectURL(audioBlob);
+        
+        // 6. 二次拦截：如果网络请求返回过程中用户已经提前切出或手动暂停，直接废弃播放
+        if (currentPlayingMsg !== msg) {
+            URL.revokeObjectURL(audioUrl);
+            return;
+        }
+
+        const player = new Audio(audioUrl);
+        currentAudio = player;
+
+        // 7. 绑定播放器结束和报错回调以释放资源
+        player.onended = () => {
+            msg.isPlaying = false;
+            if (currentPlayingMsg === msg) {
+                currentPlayingMsg = null;
+                currentAudio = null;
+            }
+            URL.revokeObjectURL(audioUrl);
+        };
+
+        player.onerror = () => {
+            msg.isPlaying = false;
+            if (currentPlayingMsg === msg) {
+                currentPlayingMsg = null;
+                currentAudio = null;
+            }
+            URL.revokeObjectURL(audioUrl);
+            alert("语音加载失败，音频格式读取异常。");
+        };
+
+        await player.play();
+    } catch (e) {
+        // 8. 捕获所有异常并全部重置，规避内存泄露风险
+        msg.isPlaying = false;
+        if (currentPlayingMsg === msg) {
+            currentPlayingMsg = null;
+            currentAudio = null;
+        }
+        if (audioUrl) {
+            URL.revokeObjectURL(audioUrl);
+        }
+        alert(`语音合成失败，请检查网络或配置。原因：${e.message}`);
+    }
+};
 
                 const loadPreset = (p) => {
                     apiConfig.value = { ...p };
@@ -1907,12 +2543,27 @@ ${wvPrompt}${mapPrompt}${stylePrompt}
 2. 严禁在白天的时段问用户为什么不睡觉。
 3. 如果 30 分钟没聊了，你必须表现出“刚看到消息”或“重新开启话题”的样子。`;
                     }
+
+                    // 追剧感知逻辑
+                    let watchPrompt = "";
+                    if (isWatching.value && theaterVideoName.value) {
+                        watchPrompt = `\n【🎬 沉浸式追剧模式】：你现在正和用户一起观看影片《${theaterVideoName.value}》。在回复中，你应该适当表现出你也正盯着屏幕，你的动作神态描述、吐槽以及对话中要融入共同看剧的感受和对剧中情节的互动。`;
+                    }
                     
                     const history = chatHistory.value[fId];
                     const lastMsg = history[history.length - 1];
                     let rechargePrompt = "";
                     if (lastMsg && lastMsg.type === 'recharge_card') {
                         rechargePrompt = `\n【充值请求】用户向你发起了充值申请卡片，希望你帮他充值 ￥${lastMsg.amount} 元。如果你同意帮他付钱，请务必在回复文字的最后加上标签：[RECHARGE_SUCCESS]；如果你不同意，请在回复文字最后加上标签：[RECHARGE_REFUSED]。`;
+                    }
+                    if (lastMsg && lastMsg.type === 'transfer') {
+                        rechargePrompt += `\n【系统提醒：收到转账】用户刚刚给你转账了 ￥${lastMsg.amount.toFixed(2)} 元。请在回复中表现出收到钱的对应反应。`;
+                    }
+                    if (lastMsg && lastMsg.type === 'red_packet') {
+                        rechargePrompt += `\n【系统提醒：收到红包】用户刚刚给你发了一个微信红包，面额为 ￥${lastMsg.amount.toFixed(2)} 元。请在回复中表现出收到并拆开红包后的情绪反应。`;
+                    }
+                    if (lastMsg && lastMsg.type === 'voice') {
+                        rechargePrompt += `\n【系统提醒：语音消息】用户刚刚发来了一条语音消息。你必须扮演得像听完语音之后对其内容进行对应答复。`;
                     }
 
                     chatHistory.value[fId].push({ role: 'assistant', type: 'text', content: '思考中...' });
@@ -1930,16 +2581,21 @@ ${wvPrompt}${mapPrompt}${stylePrompt}
                         const sys = `# Role
 你现在化身为[${activeFriend.value.name}]。
 你的性格设定：${activeFriend.value.persona || '普通人'}
-${wvPrompt}${mapPrompt}${timePrompt}${rechargePrompt}
+${wvPrompt}${mapPrompt}${timePrompt}${rechargePrompt}${watchPrompt}
 
 # 语言风格（强制执行）
 1. 碎片化：不要一次性说一大堆话。请像真实微信聊天一样，将长句拆分成多条短句发送。
 2. 活人感：使用口语语气词（如：啊、呢、嘛、哈），偶尔可以有同音错别字，不强制使用完美的标点符号，严禁AI礼貌腔。
 3. 沉浸式扮演：绝对不要说出“作为一个AI”或“我只是一个模型”。严禁在回复中输出你的分析过程、思考过程或类似“* 气泡1：”这种解释说明。
 4. 真实感：如果现在是深夜，不要问用户为什么不睡觉，除非你的设定是爱管闲事的人。
+5. 语音条限制：单次回复中最多只有一至两句话采用【语音】格式，其他句子必须用普通文字发送，绝不能句句发语音。
+
+# 特殊隐秘规则 (必须遵守):
+1. 请在你全部回复文本的最后，另起一行输出一个 [THOUGHTS] 标签（格式为：[THOUGHTS]你的心理活动描述），描述你当前这段话背后隐藏的、最真实的心理想法（例如：[THOUGHTS]其实我有点害羞，希望他能主动一点...）。这段内心活动不要写入普通的对话气泡中。
+2. 如果你在对话中【提到、给予、获得、制作、买卖或使用了】任何具体的实物物品，请在其后另起一行输出 [ITEM_ADD]物品名称 标签（例如：[ITEM_ADD]一盒热草莓大福），方便系统自动收纳至背包。若无物品互动则不输出此标签。
 
 # 输出格式
-请直接输出你要说的对话内容。如果是多条气泡，请用换行符分隔。`;
+请直接输出你要说的对话内容。如果是多条气泡，请用换行符分隔。最后附上上述的隐秘规则标签。`;
 
                         const systemPrompt = [{ role: 'system', content: sys }];
                         
@@ -1995,6 +2651,38 @@ ${wvPrompt}${mapPrompt}${timePrompt}${rechargePrompt}
                         let reply = data.choices[0].message.content;
                         chatHistory.value[fId].pop(); // 移除“思考中...”提示气泡
 
+                        // 初始化好友数据中的余额和背包（如果未定义）
+                        if (activeFriend.value.balance === undefined) {
+                            activeFriend.value.balance = 800.00;
+                        }
+                        if (activeFriend.value.backpack === undefined) {
+                            activeFriend.value.backpack = [];
+                        }
+
+                        // 提取 [ITEM_ADD] 标签
+                        if (reply.includes("[ITEM_ADD]")) {
+                            const itemMatches = reply.match(/\[ITEM_ADD\]([^\n\r]+)/g);
+                            if (itemMatches) {
+                                itemMatches.forEach(match => {
+                                    const itemName = match.replace("[ITEM_ADD]", "").trim();
+                                    if (itemName && !activeFriend.value.backpack.includes(itemName)) {
+                                        activeFriend.value.backpack.push(itemName);
+                                    }
+                                });
+                            }
+                            reply = reply.replace(/\[ITEM_ADD\][^\n\r]+/g, "").trim();
+                        }
+
+                        // 提取 [THOUGHTS] 标签
+                        if (reply.includes("[THOUGHTS]")) {
+                            const thoughtsParts = reply.split("[THOUGHTS]");
+                            reply = thoughtsParts[0].trim();
+                            const extractedThoughts = thoughtsParts[1].trim();
+                            if (extractedThoughts) {
+                                activeFriend.value.currentThoughts = extractedThoughts;
+                            }
+                        }
+
                         // 处理充值请求的AI判定
                         if (reply.includes("[RECHARGE_SUCCESS]")) {
                             const lastCard = chatHistory.value[fId].slice().reverse().find(m => m.type === 'recharge_card');
@@ -2022,13 +2710,52 @@ ${wvPrompt}${mapPrompt}${timePrompt}${rechargePrompt}
                         // 将AI回复的文本按换行拆分成多行，并过滤掉空白行
                         const lines = reply.split('\n').map(line => line.trim()).filter(line => line !== '');
 
+                        // 新增：初始化本次回复的语音条计数器
+                        let voiceCount = 0;
+
                         // 循环发送每一个短句气泡
                         for (let i = 0; i < lines.length; i++) {
                             // 如果发送的不是第一个气泡，中间等待 800 毫秒，模拟真人打字发消息的停顿感
                             if (i > 0) {
                                 await new Promise(resolve => setTimeout(resolve, 800));
                             }
-                            chatHistory.value[fId].push({ role: 'assistant', type: 'text', content: lines[i] });
+                            
+let lineText = lines[i];
+// 默认根据好友设置决定是否是语音
+let isVoice = activeFriend.value.allowVoice;
+
+// 核心识别：支持中文【语音】、英文[语音]以及各种旁白括号，能自动将消息转换成语音条
+if (lineText.includes("【语音") || lineText.includes("[语音")) {
+    isVoice = true;
+    // 尝试从双引号或者中文引号中，把 AI 实际说的那句话提取出来
+    const quoteMatch = lineText.match(/[“"'\u201c\u201d](.*?)[”"'\u201c\u201d]/s);
+    if (quoteMatch) {
+        lineText = quoteMatch[1]; // 提取引号内干净的对话文本作为语音内容
+    } else {
+        // 如果 AI 发送的语音没有带引号，则自动把【语音 0:13】标签和 *(旁白)* 括号过滤掉
+        lineText = lineText.replace(/[\[【]语音.*?[\]】]/g, "")
+                           .replace(/\*?[\(（].*?[\)）]\*?/g, "")
+                           .replace(/^[：:\s]+/, "")
+                           .trim();
+    }
+}
+
+// 新增：防爆机制拦截。如果准备发送语音条，先检查次数；若已达2条，则强行转为普通文本发送
+if (isVoice) {
+    if (voiceCount < 2) {
+        voiceCount++;
+    } else {
+        isVoice = false;
+    }
+}
+
+                            chatHistory.value[fId].push({ 
+                                role: 'assistant', 
+                                type: isVoice ? 'voice' : 'text', 
+                                content: lineText,
+                                isPlaying: false,
+                                showTranslation: false
+                            });
                             scrollToBottom(); // 每次发送新气泡，聊天窗口自动滚到最下方
                         }
 
@@ -2490,6 +3217,13 @@ ${wvPrompt}${mapPrompt}${timePrompt}${rechargePrompt}
                             amount: '+' + amt.toFixed(2),
                             time: new Date().toLocaleString()
                         });
+
+                        // 扣减好友的余额
+                        if (activeFriend.value.balance === undefined) {
+                            activeFriend.value.balance = 800.00;
+                        }
+                        activeFriend.value.balance -= amt;
+
                         alert("代充资金已充入你的钱包余额中！");
                     }
                 };
@@ -2865,9 +3599,272 @@ const sendNotification = (title, body) => {
                         });
                 }
 
-                return {
-                    // 暴露美化设置变量与方法
-                    showBubbleEditorModal, showHeaderBeautifyModal, showInputBarBeautifyModal,
+// 控制表情包抽屉显示的变量
+const showPlusEmoji = ref(false);
+
+// 处理用户转账
+const handleTransfer = () => {
+    if (!activeFriend.value) return;
+    const amt = parseFloat(prompt("请输入转账金额:"));
+    if (isNaN(amt) || amt <= 0) return alert("请输入正确的转账金额");
+    if (amt > walletData.value.balance) {
+        return alert("余额不足！当前余额为：￥" + walletData.value.balance.toFixed(2));
+    }
+    
+    // 扣减余额并记录钱包明细
+    walletData.value.balance -= amt;
+    walletData.value.history.push({ 
+        title: '转账给-' + activeFriend.value.name, 
+        amount: '-' + amt.toFixed(2), 
+        time: new Date().toLocaleString() 
+    });
+    
+    // 增加好友的余额
+    if (activeFriend.value.balance === undefined) {
+        activeFriend.value.balance = 800.00;
+    }
+    activeFriend.value.balance += amt;
+
+    // 向当前对话插入转账样式卡片
+    chatHistory.value[activeFriend.value.id].push({ 
+        role: 'user', 
+        type: 'transfer', 
+        amount: amt 
+    });
+    showPlusPanel.value = false;
+    scrollToBottom();
+};
+
+// 处理用户发红包
+const handleRedPacket = () => {
+    if (!activeFriend.value) return;
+    const amt = parseFloat(prompt("请输入红包金额:"));
+    if (isNaN(amt) || amt <= 0) return alert("请输入正确的红包金额");
+    if (amt > walletData.value.balance) {
+        return alert("余额不足！当前余额为：￥" + walletData.value.balance.toFixed(2));
+    }
+    
+    // 扣减余额并记录钱包明细
+    walletData.value.balance -= amt;
+    walletData.value.history.push({ 
+        title: '给对方发红包', 
+        amount: '-' + amt.toFixed(2), 
+        time: new Date().toLocaleString() 
+    });
+    
+    // 增加好友的余额
+    if (activeFriend.value.balance === undefined) {
+        activeFriend.value.balance = 800.00;
+    }
+    activeFriend.value.balance += amt;
+
+    // 向当前对话插入红包样式卡片
+    chatHistory.value[activeFriend.value.id].push({ 
+        role: 'user', 
+        type: 'red_packet', 
+        amount: amt 
+    });
+    showPlusPanel.value = false;
+    scrollToBottom();
+};
+
+// 发送用户模拟语音条
+const sendUserVoice = () => {
+    if (!activeFriend.value) return;
+    if (!userInput.value.trim()) {
+        return alert("请先在输入框中打字，点击此按钮将文字以语音条的样式发送出去");
+    }
+    const text = userInput.value;
+    chatHistory.value[activeFriend.value.id].push({
+        role: 'user',
+        type: 'voice',
+        content: text,
+        isPlaying: false,
+        showTranslation: false
+    });
+    userInput.value = '';
+    scrollToBottom();
+};
+
+// 打开影院配置弹窗
+const openTheaterConfig = () => {
+    showPlusPanel.value = false;
+    showTheaterConfigModal.value = true;
+};
+
+// 触发选择本地文件
+const triggerTheaterFilePicker = () => {
+    if (theaterFilePicker.value) {
+        theaterFilePicker.value.click();
+    }
+};
+
+// 处理本地视频文件的读取
+const handleTheaterFile = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+        localVideoUrl.value = URL.createObjectURL(file);
+        localVideoFilename.value = "已就绪: " + file.name;
+    }
+};
+
+// 启动影院并播放
+const startTheater = () => {
+    if (!theaterVideoName.value.trim() && theaterSource.value === 'local') {
+        return alert("请填写剧名");
+    }
+    isWatching.value = true;
+    showFullTheaterOverlay.value = true;
+    showTheaterConfigModal.value = false;
+
+    nextTick(() => {
+        const videoPlayer = theaterVideoPlayer.value;
+        const biliPlayer = theaterBiliPlayer.value;
+        
+        if (theaterSource.value === 'local') {
+            if (!localVideoUrl.value) return alert("请先选择本地文件");
+            videoPlayer.src = localVideoUrl.value;
+            videoPlayer.play();
+        } else if (selectedOnlineType.value === 'bili') {
+            let url = theaterVideoUrl.value.trim();
+            let targetBiliUrl = "https://www.bilibili.com";
+            if (url) {
+                let bvidMatch = url.match(/BV[a-zA-Z0-9]+/);
+                let aidMatch = url.match(/av\d+/);
+                if (bvidMatch) {
+                    targetBiliUrl = `https://player.bilibili.com/player.html?bvid=${bvidMatch[0]}&high_quality=1&danmaku=1&autoplay=1`;
+                } else if (aidMatch) {
+                    targetBiliUrl = `https://player.bilibili.com/player.html?aid=${aidMatch[0].replace('av','')}&high_quality=1&danmaku=1&autoplay=1`;
+                } else {
+                    targetBiliUrl = url.replace('www.bilibili.com', 'm.bilibili.com');
+                }
+            }
+            biliPlayer.src = targetBiliUrl;
+        } else {
+            let url = theaterVideoUrl.value.trim();
+            if (!url) return alert("请粘贴直链地址");
+            videoPlayer.src = url;
+            videoPlayer.play();
+        }
+
+        // 插入追剧系统提示词
+        const fId = activeFriend.value.id;
+        chatHistory.value[fId].push({
+            role: 'assistant',
+            type: 'text',
+            content: '🍿 开启沉浸式追剧模式：《' + (theaterVideoName.value || '精彩视频') + '》'
+        });
+        
+        // 绑定拖拽事件
+        nextTick(() => {
+            const pet = document.getElementById('theater-pet');
+            if (pet) {
+                let isDragging = false;
+                let startX, startY, initialLeft, initialTop;
+                pet.addEventListener('touchstart', function(e) {
+                    isDragging = false;
+                    startX = e.touches[0].clientX;
+                    startY = e.touches[0].clientY;
+                    const rect = pet.getBoundingClientRect();
+                    initialLeft = rect.left;
+                    initialTop = rect.top;
+                }, {passive: true});
+
+                pet.addEventListener('touchmove', function(e) {
+                    isDragging = true;
+                    const dx = e.touches[0].clientX - startX;
+                    const dy = e.touches[0].clientY - startY;
+                    pet.style.left = (initialLeft + dx) + 'px';
+                    pet.style.top = (initialTop + dy) + 'px';
+                    pet.style.bottom = 'auto';
+                    pet.style.right = 'auto';
+                }, {passive: false});
+            }
+        });
+    });
+};
+
+// 退出放映厅
+const exitTheater = () => {
+    if (confirm("确定退出放映厅吗？")) {
+        const videoPlayer = theaterVideoPlayer.value;
+        if (videoPlayer) {
+            videoPlayer.pause();
+        }
+        showFullTheaterOverlay.value = false;
+        isWatching.value = false;
+        petBubbleText.value = '';
+        showPetChat.value = false;
+    }
+};
+
+// 发送剧场聊天消息并吐出AI反应
+const sendPetMsg = async () => {
+    const val = petInput.value.trim();
+    if (!val) return;
+
+    showPetChat.value = false;
+    const fId = activeFriend.value.id;
+    chatHistory.value[fId].push({ role: 'user', type: 'text', content: val });
+    petInput.value = '';
+
+    petBubbleText.value = "对方正在输入...";
+    
+    // 调用AI生成
+    await getAIResponse();
+    
+        // 从最新消息历史回显最新AI的吐槽
+        const history = chatHistory.value[fId];
+        const aiMsgs = history.filter(m => m.role === 'assistant');
+        if (aiMsgs.length > 0) {
+            petBubbleText.value = aiMsgs[aiMsgs.length - 1].content;
+        }
+    };
+
+    // 返回手机主屏幕函数
+    const backToHome = () => {
+        window.location.href = 'index.html';
+    };
+
+    return {
+        // 注册新添加的方法和变量，使其在 HTML 中生效
+        backToHome,
+        showPlusEmoji,
+        handleTransfer,
+        handleRedPacket,
+        sendUserVoice,
+    
+    // 状态栏与背包功能
+    newItemName,
+    openStatusPage,
+    addBackpackItem,
+    removeBackpackItem,
+    
+    // 追剧功能
+    showTheaterConfigModal,
+    showFullTheaterOverlay,
+    theaterSource,
+    theaterVideoName,
+    theaterVideoUrl,
+    selectedOnlineType,
+    localVideoUrl,
+    localVideoFilename,
+    isWatching,
+    showPetChat,
+    petInput,
+    petBubbleText,
+    theaterFilePicker,
+    theaterVideoPlayer,
+    theaterBiliPlayer,
+    openTheaterConfig,
+    triggerTheaterFilePicker,
+    handleTheaterFile,
+    startTheater,
+    exitTheater,
+    sendPetMsg,
+
+    // 暴露美化设置变量与方法
+    showBubbleEditorModal, showHeaderBeautifyModal, showInputBarBeautifyModal,
                     hbActiveTab, ibActiveTab, headerFileInput, inputBarFileInput,
                     saveBubbleCss, getHbOpacity, updateHbOpacity, triggerHeaderUpload,
                     handleHeaderUpload, triggerHeaderUrl, clearHeaderImg, saveHeaderBeautify,
@@ -2892,7 +3889,7 @@ const sendNotification = (title, body) => {
                     addNewOpening, editOpening, saveOpening, selectOpening, deleteOpening, showOpeningModal, openingForm,
 
                     friends, chatHistory, emojis, presets,
-                    apiConfig, models,
+                    apiConfig, models, minimaxConfig, playVoice,
                     showAddFriendModal, showEmojiImportModal, showEmojiPanel, showFriendSettings, showMsgMenu,
                     newFriendName, emojiInputText, userInput,
                     menuMsgIndex, multiSelectMode, selectedIndexes,
@@ -2923,6 +3920,92 @@ const sendNotification = (title, body) => {
         }).mount('#app');
     </script>
 
+<script>
+    (function() {
+        const ball = document.getElementById('floating-ball');
+        if (!ball) return;
+        // 从本地存储读取之前拖拽保存的位置
+        const savedX = localStorage.getItem('fb_x');
+        const savedY = localStorage.getItem('fb_y');
+        if (savedX !== null && savedY !== null) {
+            ball.style.left = savedX + 'px';
+            ball.style.top = savedY + 'px';
+            ball.style.right = 'auto';
+            ball.style.bottom = 'auto';
+        } else {
+            ball.style.bottom = '110px';
+            ball.style.right = '20px';
+            ball.style.left = 'auto';
+            ball.style.top = 'auto';
+        }
+        let isDragging = false;
+        let startX = 0, startY = 0;
+        let initialLeft = 0, initialTop = 0;
+        let active = false;
+        function dragStart(clientX, clientY) {
+            isDragging = false;
+            const rect = ball.getBoundingClientRect();
+            ball.style.left = rect.left + 'px';
+            ball.style.top = rect.top + 'px';
+            ball.style.right = 'auto';
+            ball.style.bottom = 'auto';
+            initialLeft = rect.left;
+            initialTop = rect.top;
+            startX = clientX;
+            startY = clientY;
+        }
+        function dragMove(clientX, clientY) {
+            const dx = clientX - startX;
+            const dy = clientY - startY;
+            if (Math.abs(dx) > 5 || Math.abs(dy) > 5) {
+                isDragging = true;
+            }
+            if (isDragging) {
+                let newLeft = initialLeft + dx;
+                let newTop = initialTop + dy;
+                const maxLeft = window.innerWidth - ball.offsetWidth;
+                const maxTop = window.innerHeight - ball.offsetHeight;
+                newLeft = Math.max(0, Math.min(newLeft, maxLeft));
+                newTop = Math.max(0, Math.min(newTop, maxTop));
+                ball.style.left = newLeft + 'px';
+                ball.style.top = newTop + 'px';
+                localStorage.setItem('fb_x', newLeft);
+                localStorage.setItem('fb_y', newTop);
+            }
+        }
+        ball.addEventListener('touchstart', function(e) {
+            dragStart(e.touches[0].clientX, e.touches[0].clientY);
+        }, { passive: true });
+        ball.addEventListener('touchmove', function(e) {
+            if (e.cancelable) e.preventDefault();
+            dragMove(e.touches[0].clientX, e.touches[0].clientY);
+        }, { passive: false });
+        ball.addEventListener('touchend', function(e) {
+            if (isDragging) {
+                e.preventDefault();
+            }
+        }, { passive: false });
+        ball.addEventListener('mousedown', function(e) {
+            active = true;
+            dragStart(e.clientX, e.clientY);
+        });
+        document.addEventListener('mousemove', function(e) {
+            if (!active) return;
+            dragMove(e.clientX, e.clientY);
+        });
+        document.addEventListener('mouseup', function(e) {
+            if (!active) return;
+            active = false;
+        });
+        ball.addEventListener('click', function(e) {
+            if (isDragging) {
+                e.stopImmediatePropagation();
+                e.preventDefault();
+            }
+        }, true);
+    })();
+</script>
+
     <style>
         @keyframes slide-up {
             from { transform: translateY(100%); }
@@ -2933,4 +4016,3 @@ const sendNotification = (title, body) => {
         }
     </style>
 </body>
-</html>
