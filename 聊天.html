@@ -1874,20 +1874,42 @@
                     activeTab.value = 'contacts';
                 };
 
-                // 从 kvdb.io 云端获取数据
-                const fetchGlobalCharacters = async () => {
-                    try {
-                        const res = await fetch(`https://kvdb.io/c8f1a3e5b7c94d0b8f2a1/all_chars`);
-                        if (res.ok) {
-                            hallCharacters.value = await res.json();
-                        } else {
-                            hallCharacters.value = [];
-                        }
-                    } catch (e) {
-                        console.error('获取角色大厅失败', e);
-                        hallCharacters.value = [];
-                    }
-                };
+// 从本地缓存与云端获取数据并合并展示
+const fetchGlobalCharacters = async () => {
+    // 1. 先从本地浏览器缓存（localStorage）中读取“角色卡App”保存的角色卡数据
+    let localList = [];
+    try {
+        const localData = localStorage.getItem('local_character_cards');
+        if (localData) {
+            localList = JSON.parse(localData);
+        }
+    } catch (err) {
+        console.error('读取本地角色卡失败:', err);
+    }
+
+    // 2. 从云端获取已上传的角色大厅数据
+    let cloudList = [];
+    try {
+        const res = await fetch(`https://kvdb.io/c8f1a3e5b7c94d0b8f2a1/all_chars`);
+        if (res.ok) {
+            cloudList = await res.json();
+        }
+    } catch (e) {
+        console.error('获取云端角色大厅失败:', e);
+    }
+
+    // 3. 将本地角色卡和云端角色卡合并（根据名字去重，防止重复显示）
+    const mergedList = [...localList];
+    cloudList.forEach(cloudChar => {
+        const exists = mergedList.some(localChar => localChar.name === cloudChar.name);
+        if (!exists) {
+            mergedList.push(cloudChar);
+        }
+    });
+
+    // 4. 将最终合并的结果渲染到大厅列表中
+    hallCharacters.value = mergedList;
+};
 
                 // 上传新角色卡到 kvdb.io 云端
                 const uploadCharacterCard = async () => {
