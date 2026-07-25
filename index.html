@@ -1033,7 +1033,7 @@
             };
 
             // 页面跳转函数（微信聊天采用内置视图，其他 App 采用内置 iframe 渲染，保持悬浮球在所有页面置顶）
-            const openChatPage = () => { currentView.value = 'chat'; };
+            const openChatPage = () => { openIframeApp('聊天.html'); };
             const openForumPage = () => { openIframeApp('论坛.html'); };
             const openShoppingPage = () => { openIframeApp('购物.html'); };
             const openXhsPage = () => { openIframeApp('小红书.html'); };
