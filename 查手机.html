@@ -423,36 +423,24 @@ function showSelector() {
         avatar.innerText = friend.name ? friend.name[0] : '?';
         
         // 文本信息容器
-        const info = document.createElement('div');
-        info.style.cssText = `
-            flex: 1;
-            min-width: 0;
-        `;
-        
-        const name = document.createElement('div');
-        name.style.cssText = `
-            font-size: 16px;
-            font-weight: bold;
-            color: #333;
-        `;
-        name.innerText = friend.name;
-        
-        const persona = document.createElement('div');
-        persona.style.cssText = `
-            font-size: 12px;
-            color: #888;
-            margin-top: 4px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        `;
-        persona.innerText = friend.persona || '暂无人设设定';
-        
-        info.appendChild(name);
-        info.appendChild(persona);
-        item.appendChild(avatar);
-        item.appendChild(info);
-        listContainer.appendChild(item);
+const info = document.createElement('div');
+info.style.cssText = `
+    flex: 1;
+    min-width: 0;
+`;
+
+const name = document.createElement('div');
+name.style.cssText = `
+    font-size: 16px;
+    font-weight: bold;
+    color: #333;
+`;
+name.innerText = friend.name;
+
+info.appendChild(name);
+item.appendChild(avatar);
+item.appendChild(info);
+listContainer.appendChild(item);
     });
 }
 
