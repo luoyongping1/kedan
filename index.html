@@ -43,7 +43,8 @@
         }
         /* 主屏幕网格系统 */
         .home-screen {
-            flex: 1;
+            width: 100%;
+            height: 100%;
             display: grid;
             grid-template-columns: repeat(4, 1fr);
             grid-template-rows: repeat(7, minmax(70px, auto));
@@ -119,26 +120,7 @@
         }
         .dot { width: 7px; height: 7px; background: rgba(255,255,255,0.4); border-radius: 50%; }
         .dot.active { background: white; }
-        /* 5. 底部 Dock 栏 (5个常驻App) */
-        .dock-container {
-            padding: 0 15px 25px 15px; /* 留出底部手势操作区 */
-        }
-        .dock-bar {
-            background: rgba(255, 255, 255, 0.3);
-            backdrop-filter: blur(35px);
-            -webkit-backdrop-filter: blur(35px);
-            border-radius: 32px;
-            padding: 14px 10px;
-            display: grid;
-            grid-template-columns: repeat(5, 1fr);
-            gap: 5px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
-        }
-        .dock-bar .icon-box {
-            width: 54px; /* Dock 图标稍微调小一点，更显精致 */
-            height: 54px;
-        }
+        
         /* 设置页面独立全屏 */
         .settings-view {
             position: absolute;
@@ -198,11 +180,61 @@
         #floating-ball:active {
             opacity: 0.8 !important;
         }
+
+        /* ===== 世界观/世界书 App 样式 ===== */
+        .wb-header {
+            padding: 15px; 
+            background: #111;
+            display: flex; 
+            flex-direction: column; 
+            gap: 10px;
+            border-top-left-radius: 26px;
+            border-top-right-radius: 26px;
+        }
+        .wb-tabs {
+            display: flex; background: rgba(255,255,255,0.05); border-radius: 10px; padding: 4px;
+        }
+        .wb-tab-btn {
+            flex: 1; text-align: center; padding: 8px; font-size: 13px; color: #888; cursor: pointer; border-radius: 8px;
+        }
+        .wb-tab-btn.active {
+            background: #3b82f6; color: white;
+        }
+        .wb-search-row {
+            display: flex; align-items: center; gap: 10px;
+        }
+        .wb-search {
+            flex: 1; padding: 8px 15px; border-radius: 20px;
+            border: none; background: #222; color: white; outline: none;
+        }
+        .wb-add-icon { font-size: 24px; color: #3b82f6; cursor: pointer; }
+        .wb-content { flex: 1; overflow-y: auto; padding: 10px 20px; }
+        .wb-group { margin-bottom: 10px; border-radius: 10px; background: rgba(255,255,255,0.05); overflow: hidden; }
+        .wb-group-title {
+            padding: 12px 15px; background: rgba(255,255,255,0.1);
+            display: flex; justify-content: space-between; cursor: pointer;
+            font-weight: bold; font-size: 14px;
+        }
+        .wb-group-content.collapsed { display: none; }
+        .wb-item { padding: 12px 15px; border-bottom: 1px solid rgba(255,255,255,0.05); cursor: pointer; }
+        .wb-item-name { color: #60a5fa; margin-bottom: 4px; }
+        .wb-item-text { color: #ccc; font-size: 12px; }
+        .effect-selector {
+            display: flex; background: rgba(255,255,255,0.1); backdrop-filter: blur(10px);
+            padding: 5px; border-radius: 12px; margin-bottom: 15px; border: 1px solid rgba(255,255,255,0.2);
+        }
+        .effect-option {
+            flex: 1; text-align: center; padding: 10px; border-radius: 8px; font-size: 14px;
+            cursor: pointer; transition: 0.3s; color: #888;
+        }
+        .effect-option.active {
+            background: white; color: black; box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
     </style>
 </head>
 <body class="h-screen w-screen overflow-hidden">
 <div id="app">
-    <!-- 动态桌面背景图片：修正 z-index 为 0 并移除 pointer-events 以免干扰操作 -->
+    <!-- 动态桌面背景图片 -->
     <img :src="appearanceConfig.bgImage || 'https://picsum.photos/1080/1920'" 
          class="fixed inset-0 w-full h-full object-cover pointer-events-none select-none" 
          style="z-index: 0;" />
@@ -249,140 +281,177 @@
     </div>
 
     <!-- 1. 手机桌面主页视图 home (增加 z-index 确保在背景图之上) -->
-    <div v-if="currentView === 'home'" class="flex flex-col h-full w-full relative z-10">
-        <div class="home-screen">
-            <!-- Row 1: 顶部时钟组件 -->
-            <div class="header-widget widget-base">
-                <div class="text-4xl font-light tracking-tight">{{ currentTime }}</div>
-                <div class="text-xs opacity-90 mt-1 font-medium">{{ currentDate }}</div>
-            </div>
-            <!-- Row 2: 左侧图标 论坛 -->
-            <div class="app-icon" @click="openForumPage">
-                <div v-if="getAppIcon('forum')" class="icon-box overflow-hidden">
-                    <img :src="getAppIcon('forum')" class="w-full h-full object-cover" />
-                </div>
-                <div v-else class="icon-box" style="background-color: #ff8200; display: flex; align-items: center; justify-content: center; font-size: 28px;">📣</div>
-                <span class="icon-label">{{ getAppLabel('forum', '论坛') }}</span>
-            </div>
-            <!-- Row2 聊天图标：点击跳转聊天页面 -->
-            <div class="app-icon" @click="openChatPage">
-                <div v-if="getAppIcon('chat')" class="icon-box overflow-hidden">
-                    <img :src="getAppIcon('chat')" class="w-full h-full object-cover" />
-                </div>
-                <div v-else class="icon-box" style="background-color: #34C759; display: flex; align-items: center; justify-content: center; font-size: 28px;">💬</div>
-                <span class="icon-label">{{ getAppLabel('chat', '聊天') }}</span>
-            </div>
-            
-            <!-- 右侧纵向组件 (2x3) (纯图片展示组件) -->
-            <div class="vertical-widget widget-base overflow-hidden relative">
-                <img v-if="appearanceConfig.verticalWidget.bgImage" :src="appearanceConfig.verticalWidget.bgImage" class="w-full h-full object-cover absolute inset-0" />
-                <span v-else class="text-xs opacity-60">纯图片组件</span>
-            </div>
-            <!-- Row 3: 左侧图标替换为 小红书 与 自律打卡 -->
-            <div class="app-icon" @click="openXhsPage">
-                <div v-if="getAppIcon('xhs')" class="icon-box overflow-hidden">
-                    <img :src="getAppIcon('xhs')" class="w-full h-full object-cover" />
-                </div>
-                <div v-else class="icon-box" style="background-color: #ff2442; display: flex; align-items: center; justify-content: center; font-size: 28px;">📕</div>
-                <span class="icon-label">{{ getAppLabel('xhs', '小红书') }}</span>
-            </div>
-            <div class="app-icon" @click="openZilvPage">
-                <div v-if="getAppIcon('zilv')" class="icon-box overflow-hidden">
-                    <img :src="getAppIcon('zilv')" class="w-full h-full object-cover" />
-                </div>
-                <div v-else class="icon-box" style="background-color: #B4C7E7; display: flex; align-items: center; justify-content: center; font-size: 28px;">⭐</div>
-                <span class="icon-label">{{ getAppLabel('zilv', '自律打卡') }}</span>
-            </div>
-            <!-- Row 4: 左侧正方形组件 (2x2) (自定义卡片小组件) -->
-            <div class="square-widget widget-base overflow-hidden relative p-4 flex flex-col justify-end items-start text-left">
-                <img v-if="appearanceConfig.squareWidget.bgImage" :src="appearanceConfig.squareWidget.bgImage" class="w-full h-full object-cover absolute inset-0" />
-                <div class="relative z-10 w-full h-full flex flex-col justify-end">
-                    <p class="text-xs font-semibold text-white whitespace-pre-wrap" style="text-shadow: 1px 1px 3px rgba(0,0,0,0.9), 0 0 5px rgba(0,0,0,0.6);">
-                        {{ appearanceConfig.squareWidget.text || '暂无自定义内容\n请在外观设置中编辑' }}
-                    </p>
-                </div>
-            </div>
-            <!-- Row 5: 右侧补齐图标位替换为 梦幻扭蛋 与 查手机 -->
-            <div class="app-icon" style="grid-column: 3;" @click="openNiudanPage">
-                <div v-if="getAppIcon('niudan')" class="icon-box overflow-hidden">
-                    <img :src="getAppIcon('niudan')" class="w-full h-full object-cover" />
-                </div>
-                <div v-else class="icon-box" style="background-color: #ffe4e8; display: flex; align-items: center; justify-content: center; font-size: 28px;">🧸</div>
-                <span class="icon-label">{{ getAppLabel('niudan', '梦幻扭蛋') }}</span>
-            </div>
-            <div class="app-icon" style="grid-column: 4;" @click="openChashoujiPage">
-                <div v-if="getAppIcon('chashouji')" class="icon-box overflow-hidden">
-                    <img :src="getAppIcon('chashouji')" class="w-full h-full object-cover" />
-                </div>
-                <div v-else class="icon-box" style="background-color: #1296db; display: flex; align-items: center; justify-content: center; font-size: 28px;">🔍</div>
-                <span class="icon-label">{{ getAppLabel('chashouji', '查手机') }}</span>
-            </div>
-            <!-- Row 6: 底部 5 列图标行 -->
-            <div class="five-col-row">
-                <!-- 第1个App -->
-                <div class="app-icon" @click="openShoppingPage">
-                    <div v-if="getAppIcon('shopping')" class="icon-box overflow-hidden">
-                        <img :src="getAppIcon('shopping')" class="w-full h-full object-cover" />
+    <div v-if="currentView === 'home'" class="flex flex-col h-full w-full relative z-10 select-none">
+        
+        <!-- 多屏幕滑动容器 -->
+        <div class="flex-1 overflow-hidden relative flex flex-col">
+            <div class="flex-1 flex transition-transform duration-300 ease-out h-full"
+                 :style="{ transform: `translateX(-${currentPage * 100}%)` }"
+                 @touchstart="onTouchStart"
+                 @touchmove="onTouchMove"
+                 @touchend="onTouchEnd">
+                 
+                <!-- 第一页 -->
+                <div class="w-full flex-shrink-0 home-screen">
+                    <!-- Row 1: 顶部时钟组件 -->
+                    <div class="header-widget widget-base">
+                        <div class="text-4xl font-light tracking-tight">{{ currentTime }}</div>
+                        <div class="text-xs opacity-90 mt-1 font-medium">{{ currentDate }}</div>
                     </div>
-                    <div v-else class="icon-box" style="background-color: #ff9500; display: flex; align-items: center; justify-content: center; font-size: 28px;">🛒</div>
-                    <span class="icon-label">{{ getAppLabel('shopping', '购物') }}</span>
-                </div>
-                <!-- 第2个App -->
-                <div @click="currentView = 'settings'" class="app-icon">
-                    <div v-if="getAppIcon('settings')" class="icon-box overflow-hidden">
-                        <img :src="getAppIcon('settings')" class="w-full h-full object-cover" />
+                    <!-- Row 2: 左侧图标 论坛 -->
+                    <div class="app-icon" @click="openForumPage">
+                        <div v-if="getAppIcon('forum')" class="icon-box overflow-hidden">
+                            <img :src="getAppIcon('forum')" class="w-full h-full object-cover" />
+                        </div>
+                        <div v-else class="icon-box" style="background-color: #ff8200; display: flex; align-items: center; justify-content: center; font-size: 28px;">📣</div>
+                        <span class="icon-label">{{ getAppLabel('forum', '论坛') }}</span>
                     </div>
-                    <div v-else class="icon-box" style="background-color: #8E8E93; display: flex; align-items: center; justify-content: center; font-size: 28px;">⚙️</div>
-                    <span class="icon-label">{{ getAppLabel('settings', '设置') }}</span>
-                </div>
-                <!-- 第3个App -->
-                <div v-if="isAdminSession" class="app-icon" @click="currentView = 'admin-activation'">
-                    <div v-if="getAppIcon('admin')" class="icon-box overflow-hidden">
-                        <img :src="getAppIcon('admin')" class="w-full h-full object-cover" />
+                    <!-- Row2 聊天图标 -->
+                    <div class="app-icon" @click="openChatPage">
+                        <div v-if="getAppIcon('chat')" class="icon-box overflow-hidden">
+                            <img :src="getAppIcon('chat')" class="w-full h-full object-cover" />
+                        </div>
+                        <div v-else class="icon-box" style="background-color: #34C759; display: flex; align-items: center; justify-content: center; font-size: 28px;">💬</div>
+                        <span class="icon-label">{{ getAppLabel('chat', '聊天') }}</span>
                     </div>
-                    <div v-else class="icon-box" style="background-color: #8b5cf6; display: flex; align-items: center; justify-content: center; font-size: 28px;">🔑</div>
-                    <span class="icon-label">{{ getAppLabel('admin', '生成激活码') }}</span>
-                </div>
-                <div v-else class="app-icon">
-                    <div class="icon-box"></div>
-                    <span class="icon-label">App 3</span>
-                </div>
-                <!-- 第4个App -->
-                <div class="app-icon" @click="openMapPage">
-                    <div v-if="getAppIcon('map')" class="icon-box overflow-hidden">
-                        <img :src="getAppIcon('map')" class="w-full h-full object-cover" />
+                    
+                    <!-- 右侧纵向组件 (2x3) -->
+                    <div class="vertical-widget widget-base overflow-hidden relative">
+                        <img v-if="appearanceConfig.verticalWidget.bgImage" :src="appearanceConfig.verticalWidget.bgImage" class="w-full h-full object-cover absolute inset-0" />
+                        <span v-else class="text-xs opacity-60">纯图片组件</span>
                     </div>
-                    <div v-else class="icon-box" style="background-color: #007AFF; display: flex; align-items: center; justify-content: center; font-size: 28px;">🗺️</div>
-                    <span class="icon-label">{{ getAppLabel('map', '地图') }}</span>
-                </div>
-                <!-- 第5个App (新外观 App) -->
-                <div class="app-icon" @click="currentView = 'appearance-settings'">
-                    <div v-if="getAppIcon('appearance')" class="icon-box overflow-hidden">
-                        <img :src="getAppIcon('appearance')" class="w-full h-full object-cover" />
+                    <!-- Row 3: 左侧图标 -->
+                    <div class="app-icon" @click="openXhsPage">
+                        <div v-if="getAppIcon('xhs')" class="icon-box overflow-hidden">
+                            <img :src="getAppIcon('xhs')" class="w-full h-full object-cover" />
+                        </div>
+                        <div v-else class="icon-box" style="background-color: #ff2442; display: flex; align-items: center; justify-content: center; font-size: 28px;">📕</div>
+                        <span class="icon-label">{{ getAppLabel('xhs', '小红书') }}</span>
                     </div>
-                    <div v-else class="icon-box" style="background-color: #6366f1; display: flex; align-items: center; justify-content: center; font-size: 28px;">🎨</div>
-                    <span class="icon-label">{{ getAppLabel('appearance', '外观') }}</span>
+                    <div class="app-icon" @click="openZilvPage">
+                        <div v-if="getAppIcon('zilv')" class="icon-box overflow-hidden">
+                            <img :src="getAppIcon('zilv')" class="w-full h-full object-cover" />
+                        </div>
+                        <div v-else class="icon-box" style="background-color: #B4C7E7; display: flex; align-items: center; justify-content: center; font-size: 28px;">⭐</div>
+                        <span class="icon-label">{{ getAppLabel('zilv', '自律打卡') }}</span>
+                    </div>
+                    <!-- Row 4: 左侧正方形组件 (2x2) -->
+                    <div class="square-widget widget-base overflow-hidden relative p-4 flex flex-col justify-end items-start text-left">
+                        <img v-if="appearanceConfig.squareWidget.bgImage" :src="appearanceConfig.squareWidget.bgImage" class="w-full h-full object-cover absolute inset-0" />
+                        <div class="relative z-10 w-full h-full flex flex-col justify-end">
+                            <p class="text-xs font-semibold text-white whitespace-pre-wrap" style="text-shadow: 1px 1px 3px rgba(0,0,0,0.9), 0 0 5px rgba(0,0,0,0.6);">
+                                {{ appearanceConfig.squareWidget.text || '暂无自定义内容\n请在外观设置中编辑' }}
+                            </p>
+                        </div>
+                    </div>
+                    <!-- Row 5: 右侧补齐图标位 -->
+                    <div class="app-icon" style="grid-column: 3;" @click="openNiudanPage">
+                        <div v-if="getAppIcon('niudan')" class="icon-box overflow-hidden">
+                            <img :src="getAppIcon('niudan')" class="w-full h-full object-cover" />
+                        </div>
+                        <div v-else class="icon-box" style="background-color: #ffe4e8; display: flex; align-items: center; justify-content: center; font-size: 28px;">🧸</div>
+                        <span class="icon-label">{{ getAppLabel('niudan', '梦幻扭蛋') }}</span>
+                    </div>
+                    <div class="app-icon" style="grid-column: 4;" @click="openChashoujiPage">
+                        <div v-if="getAppIcon('chashouji')" class="icon-box overflow-hidden">
+                            <img :src="getAppIcon('chashouji')" class="w-full h-full object-cover" />
+                        </div>
+                        <div v-else class="icon-box" style="background-color: #1296db; display: flex; align-items: center; justify-content: center; font-size: 28px;">🔍</div>
+                        <span class="icon-label">{{ getAppLabel('chashouji', '查手机') }}</span>
+                    </div>
+                    <!-- Row 6: 底部 5 列图标行 -->
+                    <div class="five-col-row">
+                        <!-- 第1个App -->
+                        <div class="app-icon" @click="openShoppingPage">
+                            <div v-if="getAppIcon('shopping')" class="icon-box overflow-hidden">
+                                <img :src="getAppIcon('shopping')" class="w-full h-full object-cover" />
+                            </div>
+                            <div v-else class="icon-box" style="background-color: #ff9500; display: flex; align-items: center; justify-content: center; font-size: 28px;">🛒</div>
+                            <span class="icon-label">{{ getAppLabel('shopping', '购物') }}</span>
+                        </div>
+                        <!-- 第2个App -->
+                        <div @click="currentView = 'settings'" class="app-icon">
+                            <div v-if="getAppIcon('settings')" class="icon-box overflow-hidden">
+                                <img :src="getAppIcon('settings')" class="w-full h-full object-cover" />
+                            </div>
+                            <div v-else class="icon-box" style="background-color: #8E8E93; display: flex; align-items: center; justify-content: center; font-size: 28px;">⚙️</div>
+                            <span class="icon-label">{{ getAppLabel('settings', '设置') }}</span>
+                        </div>
+                        <!-- 第3个App -->
+                        <div v-if="isAdminSession" class="app-icon" @click="currentView = 'admin-activation'">
+                            <div v-if="getAppIcon('admin')" class="icon-box overflow-hidden">
+                                <img :src="getAppIcon('admin')" class="w-full h-full object-cover" />
+                            </div>
+                            <div v-else class="icon-box" style="background-color: #8b5cf6; display: flex; align-items: center; justify-content: center; font-size: 28px;">🔑</div>
+                            <span class="icon-label">{{ getAppLabel('admin', '生成激活码') }}</span>
+                        </div>
+                        <div class="app-icon" v-else>
+                            <div class="icon-box"></div>
+                            <span class="icon-label">App 3</span>
+                        </div>
+                        <!-- 第4个App -->
+                        <div class="app-icon" @click="openMapPage">
+                            <div v-if="getAppIcon('map')" class="icon-box overflow-hidden">
+                                <img :src="getAppIcon('map')" class="w-full h-full object-cover" />
+                            </div>
+                            <div v-else class="icon-box" style="background-color: #007AFF; display: flex; align-items: center; justify-content: center; font-size: 28px;">🗺️</div>
+                            <span class="icon-label">{{ getAppLabel('map', '地图') }}</span>
+                        </div>
+                        <!-- 第5个App (新外观 App) -->
+                        <div class="app-icon" @click="currentView = 'appearance-settings'">
+                            <div v-if="getAppIcon('appearance')" class="icon-box overflow-hidden">
+                                <img :src="getAppIcon('appearance')" class="w-full h-full object-cover" />
+                            </div>
+                            <div v-else class="icon-box" style="background-color: #6366f1; display: flex; align-items: center; justify-content: center; font-size: 28px;">🎨</div>
+                            <span class="icon-label">{{ getAppLabel('appearance', '外观') }}</span>
+                        </div>
+                    </div>
                 </div>
+                
+                <!-- 第二页 -->
+                <div class="w-full flex-shrink-0 home-screen pt-8">
+                    <!-- 第一行：4个新图标 -->
+                    <!-- 1. 收纳助手 -->
+                    <div class="app-icon" @click="openShounaPage">
+                        <div v-if="getAppIcon('shouna')" class="icon-box overflow-hidden">
+                            <img :src="getAppIcon('shouna')" class="w-full h-full object-cover" />
+                        </div>
+                        <div v-else class="icon-box" style="background-color: #4f46e5; display: flex; align-items: center; justify-content: center; font-size: 28px;">📦</div>
+                        <span class="icon-label">{{ getAppLabel('shouna', '收纳助手') }}</span>
+                    </div>
+                    <!-- 2. 对对碰背单词 -->
+                    <div class="app-icon" @click="openBeidanciPage">
+                        <div v-if="getAppIcon('beidanci')" class="icon-box overflow-hidden">
+                            <img :src="getAppIcon('beidanci')" class="w-full h-full object-cover" />
+                        </div>
+                        <div v-else class="icon-box" style="background-color: #a3c9ea; display: flex; align-items: center; justify-content: center; font-size: 28px;">📚</div>
+                        <span class="icon-label">{{ getAppLabel('beidanci', '对对碰') }}</span>
+                    </div>
+                    <!-- 3. 角色卡 App (原待办 1) -->
+                    <div class="app-icon" @click="openCharacterApp">
+                        <div v-if="getAppIcon('character')" class="icon-box overflow-hidden">
+                            <img :src="getAppIcon('character')" class="w-full h-full object-cover" />
+                        </div>
+                        <div v-else class="icon-box" style="background-color: #ff5e3a; display: flex; align-items: center; justify-content: center; font-size: 28px;">👤</div>
+                        <span class="icon-label">{{ getAppLabel('character', '角色卡') }}</span>
+                    </div>
+                    <!-- 4. 世界观 App (原待办 2) -->
+                    <div class="app-icon" @click="openWorldviewApp">
+                        <div v-if="getAppIcon('worldview')" class="icon-box overflow-hidden">
+                            <img :src="getAppIcon('worldview')" class="w-full h-full object-cover" />
+                        </div>
+                        <div v-else class="icon-box" style="background-color: #3b82f6; display: flex; align-items: center; justify-content: center; font-size: 28px;">📖</div>
+                        <span class="icon-label">{{ getAppLabel('worldview', '世界观') }}</span>
+                    </div>
+                </div>
+                 
             </div>
         </div>
+
         <!-- 分页点 -->
-        <div class="pagination">
-            <div class="dot active"></div>
-            <div class="dot"></div>
-            <div class="dot"></div>
-        </div>
-        <!-- 底部 Dock 栏 (5个常驻App) -->
-        <div class="dock-container">
-            <div class="dock-bar">
-                <div class="app-icon"><div class="icon-box" style="background: #34C759;"></div></div>
-                <div class="app-icon"><div class="icon-box" style="background: #007AFF;"></div></div>
-                <div class="app-icon"><div class="icon-box" style="background: #FF9500;"></div></div>
-                <div class="app-icon"><div class="icon-box" style="background: #FF2D55;"></div></div>
-                <!-- 第五个图标设为进入设置的按钮 -->
-                <div @click="currentView = 'settings'" class="app-icon">
-                    <div class="icon-box !bg-gray-800/80 flex items-center justify-center text-xl">⚙️</div>
-                </div>
-            </div>
+        <div class="pagination pb-8">
+            <div class="dot cursor-pointer" :class="{ active: currentPage === 0 }" @click="currentPage = 0"></div>
+            <div class="dot cursor-pointer" :class="{ active: currentPage === 1 }" @click="currentPage = 1"></div>
         </div>
     </div>
 
@@ -558,6 +627,194 @@
                     <div class="text-lg font-mono font-bold text-green-400 tracking-wider">{{ generatedCode }}</div>
                 </div>
             </section>
+        </div>
+    </div>
+
+    <!-- 角色卡 App 视图 -->
+    <div v-if="currentView === 'character-app'" class="settings-view flex flex-col justify-start z-[100] text-white">
+        <div class="flex items-center justify-between mb-6">
+            <h2 class="text-2xl font-bold tracking-wider">角色卡管理</h2>
+            <div class="flex space-x-2">
+                <button @click="openCharForm()" class="text-xs bg-green-600 text-white px-4 py-2 rounded-full hover:bg-green-500 transition">＋ 新建角色</button>
+                <button @click="currentView = 'home'" class="text-xs bg-zinc-800 text-white px-4 py-2 rounded-full hover:bg-zinc-700 transition">返回桌面</button>
+            </div>
+        </div>
+
+        <!-- 列表容器 -->
+        <div class="flex-1 overflow-y-auto space-y-4 pr-1 pb-10">
+            <div v-if="characterCards.length === 0" class="text-center py-10 text-zinc-400 text-xs">
+                暂无角色卡，点击右上角新建。
+            </div>
+            <div v-else-if="characterCards.length > 0" v-for="char in characterCards" :key="char.id" class="bg-white/10 p-4 rounded-3xl border border-white/20 flex flex-col space-y-3 shadow-md">
+                <div class="flex items-center space-x-3">
+                    <div class="w-12 h-12 rounded-full overflow-hidden bg-zinc-800 border border-white/20 flex items-center justify-center font-bold text-sm shrink-0">
+                        <img v-if="char.avatar" :src="char.avatar" class="w-full h-full object-cover" />
+                        <span v-else>{{ char.name ? char.name[0] : '?' }}</span>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <h4 class="font-bold text-sm truncate text-white">{{ char.name }}</h4>
+                        <p class="text-[10px] text-zinc-400 mt-0.5">
+                            关联世界观：{{ getWorldviewName(char.selectedWorldviewId) || '未关联' }}
+                        </p>
+                    </div>
+                    <div class="flex space-x-2">
+                        <button @click="openCharForm(char)" class="bg-blue-600 hover:bg-blue-500 text-white text-xs px-3 py-1.5 rounded-full transition">编辑</button>
+                        <button @click="deleteCharacterCard(char.id)" class="bg-red-655 hover:bg-red-500 text-white text-xs px-3 py-1.5 rounded-full transition">删除</button>
+                    </div>
+                </div>
+                <div class="text-xs text-zinc-300 bg-black/30 p-2.5 rounded-xl border border-white/5 max-h-24 overflow-y-auto">
+                    <strong class="text-[10px] text-zinc-500 block mb-1 font-bold">人物设定：</strong>
+                    {{ char.persona }}
+                </div>
+            </div>
+        </div>
+
+        <!-- 新增/编辑角色模态弹窗 -->
+        <div v-if="showCharModal" class="fixed inset-0 bg-black/85 flex items-center justify-center p-6 z-[110]">
+            <div class="bg-zinc-900 p-5 rounded-3xl w-full max-w-sm space-y-4 border border-zinc-800 text-left overflow-y-auto max-h-[90vh]">
+                <h3 class="font-bold text-center text-base text-white">{{ charForm.id ? '编辑角色卡' : '新建角色卡' }}</h3>
+                
+                <div class="space-y-3 text-xs text-zinc-300">
+                    <div>
+                        <label class="block text-zinc-400 mb-1">名称</label>
+                        <input v-model="charForm.name" type="text" class="w-full bg-black border border-zinc-800 p-2.5 rounded-xl text-white outline-none" placeholder="输入角色名字">
+                    </div>
+                    <div>
+                        <label class="block text-zinc-400 mb-1">头像设置</label>
+                        <div class="flex space-x-2 mb-2">
+                            <input v-model="charForm.avatar" type="text" class="flex-1 bg-black border border-zinc-800 p-2 rounded-xl text-white outline-none" placeholder="输入头像图片 URL">
+                            <label class="bg-zinc-800 text-white px-3 py-2 rounded-xl cursor-pointer hover:bg-zinc-700 transition flex items-center justify-center text-[10px] font-medium shrink-0">
+                                本地上传
+                                <input type="file" accept="image/*" @change="handleCharAvatarUpload" class="hidden">
+                            </label>
+                        </div>
+                        <div v-if="charForm.avatar" class="w-16 h-16 rounded-full overflow-hidden border border-white/20 mx-auto bg-zinc-800">
+                            <img :src="charForm.avatar" class="w-full h-full object-cover">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-zinc-400 mb-1">人物设定 (Prompt)</label>
+                        <textarea v-model="charForm.persona" rows="5" class="w-full bg-black border border-zinc-800 p-2.5 rounded-xl text-white outline-none resize-none" placeholder="输入该角色的人设背景描述"></textarea>
+                    </div>
+                    <div>
+                        <label class="block text-zinc-400 mb-1 font-bold text-orange-400">关联世界观（聊天App自动勾选）</label>
+                        <select v-model="charForm.selectedWorldviewId" class="w-full bg-black border border-zinc-800 p-2.5 rounded-xl text-white outline-none">
+                            <option value="">-- 不关联世界观 --</option>
+                            <option v-for="wv in availableWorldviews" :key="wv.id" :value="wv.id">{{ wv.name }}</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="flex space-x-2 pt-2">
+                    <button @click="showCharModal = false" class="flex-1 bg-zinc-800 text-white p-2.5 rounded-xl text-xs transition">取消</button>
+                    <button @click="saveCharacterCard" :disabled="isUploadingChar" class="flex-1 bg-blue-600 text-white p-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center">
+                        <span v-if="isUploadingChar">保存并同步中...</span>
+                        <span v-else>保存并同步</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 世界观 (世界书) App 视图 -->
+    <div v-if="currentView === 'worldview-app'" class="settings-view flex flex-col justify-start z-[100] text-white p-0 overflow-hidden">
+        <!-- 头部 -->
+        <div class="p-4 bg-zinc-900 border-b border-white/10 flex items-center justify-between">
+            <h2 class="text-xl font-bold tracking-wider">世界观设定 (世界书)</h2>
+            <button @click="currentView = 'home'" class="text-xs bg-zinc-800 text-white px-4 py-2 rounded-full hover:bg-zinc-700 transition">返回桌面</button>
+        </div>
+
+        <div class="wb-header">
+            <div class="wb-tabs">
+                <div class="wb-tab-btn" :class="{ active: currentWbTab === 'global' }" @click="currentWbTab = 'global'">全局生效</div>
+                <div class="wb-tab-btn" :class="{ active: currentWbTab === 'local' }" @click="currentWbTab = 'local'">局部挂载</div>
+            </div>
+            <div class="wb-search-row">
+                <input type="text" class="wb-search text-xs" v-model="wbSearchInput" placeholder="搜索世界书...">
+                <div class="wb-add-icon font-bold" @click="openWbModal()">+</div>
+            </div>
+        </div>
+
+        <div class="wb-content overflow-y-auto flex-1 pb-10">
+            <div v-if="filteredWbBooks.length === 0" class="text-center py-10 text-zinc-400 text-xs">
+                暂无符合条件的设定
+            </div>
+            <div v-else-if="filteredWbBooks.length > 0" v-for="group in wbData.groups" :key="group" class="wb-group">
+                <div v-if="hasGroupBooks(group)" class="wb-group-title text-xs" @click="toggleWbGroup(group)">
+                    <span>📁 {{ group }}</span>
+                    <span>{{ getGroupBooksCount(group) }}</span>
+                </div>
+                <div class="wb-group-content" v-show="!collapsedGroups.includes(group)">
+                    <div v-for="book in getGroupBooks(group)" :key="book.id" @click="openWbModal(book)" class="wb-item hover:bg-white/5 transition">
+                        <div class="wb-item-name text-xs font-bold">
+                            {{ book.title }}
+                            <small v-if="book.mode === 'keyword'" class="text-red-400 font-semibold">[关键词: {{ book.keyword }}]</small>
+                            <small v-if="book.scope === 'global'" class="text-blue-400 font-semibold">[全局]</small>
+                        </div>
+                        <div class="wb-item-text text-[10px] text-zinc-400 truncate mt-1">{{ book.content }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 添加/编辑世界观模态框 -->
+        <div v-if="showWbModal" class="fixed inset-0 bg-black/90 flex items-center justify-center p-6 z-[110] overflow-y-auto">
+            <div class="bg-zinc-900 p-5 rounded-3xl w-full max-w-sm space-y-4 border border-zinc-800 text-left max-h-[90vh] overflow-y-auto">
+                <h3 class="font-bold text-center text-base text-white">{{ wbForm.id ? '编辑设定' : '添加设定' }}</h3>
+                
+                <div class="space-y-3 text-xs text-zinc-300">
+                    <div>
+                        <label class="block text-zinc-400 mb-1">书籍/设定名称</label>
+                        <input v-model="wbForm.title" type="text" class="w-full bg-black border border-zinc-800 p-2.5 rounded-xl text-white outline-none" placeholder="输入名称">
+                    </div>
+                    <div>
+                        <label class="block text-zinc-400 mb-1">生效模式</label>
+                        <div class="effect-selector">
+                            <div class="effect-option" :class="{ active: wbForm.mode === 'global' }" @click="wbForm.mode = 'global'">全局生效</div>
+                            <div class="effect-option" :class="{ active: wbForm.mode === 'keyword' }" @click="wbForm.mode = 'keyword'">关键词触发</div>
+                        </div>
+                    </div>
+                    <div v-if="wbForm.mode === 'keyword'">
+                        <label class="block text-zinc-400 mb-1">触发关键词</label>
+                        <input v-model="wbForm.keyword" type="text" class="w-full bg-black border border-zinc-800 p-2.5 rounded-xl text-white outline-none" placeholder="例如：去约会">
+                    </div>
+                    <div>
+                        <label class="block text-zinc-400 mb-1 font-bold">内容 (支持 HTML 小剧场代码)</label>
+                        <div class="flex space-x-2 mb-2">
+                            <label class="bg-blue-600 text-white px-3 py-2 rounded-xl cursor-pointer hover:bg-blue-500 transition text-center text-[10px] font-medium flex-1">
+                                📄 从文档导入内容
+                                <input type="file" accept=".txt,.docx" @change="handleWbImport" class="hidden">
+                            </label>
+                            <button @click="previewHtml" class="bg-purple-600 hover:bg-purple-500 text-white px-3 py-2 rounded-xl transition text-[10px] font-medium flex-1">预览 HTML 效果</button>
+                        </div>
+                        <textarea v-model="wbForm.content" rows="6" class="w-full bg-black border border-zinc-800 p-2.5 rounded-xl text-white outline-none resize-none font-mono" placeholder="输入文字或 HTML 代码"></textarea>
+                    </div>
+                    <div>
+                        <label class="block text-zinc-400 mb-1">选择/新增分组</label>
+                        <div class="flex space-x-2">
+                            <select v-model="wbForm.group" class="flex-1 bg-black border border-zinc-800 p-2.5 rounded-xl text-white outline-none">
+                                <option v-for="g in wbData.groups" :key="g" :value="g">{{ g }}</option>
+                            </select>
+                            <button @click="addNewWbGroup" class="bg-zinc-800 text-white px-3 py-2 rounded-xl hover:bg-zinc-700 transition font-bold">+</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex space-x-2 pt-2">
+                    <button @click="showWbModal = false" class="flex-1 bg-zinc-800 text-white p-2.5 rounded-xl text-xs transition">取消</button>
+                    <button v-if="wbForm.id" @click="deleteWbBook" class="flex-1 bg-red-600 hover:bg-red-500 text-white p-2.5 rounded-xl text-xs font-bold transition">删除</button>
+                    <button @click="saveWbBook" class="flex-1 bg-blue-600 text-white p-2.5 rounded-xl text-xs font-bold transition">保存</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- HTML 预览弹窗 -->
+        <div v-if="showHtmlPreview" class="fixed inset-0 bg-white z-[120] flex flex-col">
+            <div class="h-12 bg-zinc-100 border-b border-zinc-300 flex items-center justify-between px-4">
+                <span class="text-zinc-800 font-bold text-sm">小剧场预览</span>
+                <button @click="showHtmlPreview = false" class="text-blue-600 font-bold text-sm">关闭</button>
+            </div>
+            <iframe ref="htmlPreviewFrame" class="w-full flex-1 border-none bg-white"></iframe>
         </div>
     </div>
 
@@ -834,6 +1091,28 @@
     const { createApp, ref, computed, nextTick, watch } = Vue;
     createApp({
         setup() {
+            // 滑动分页状态与逻辑
+            const currentPage = ref(0);
+            let touchStartX = 0;
+            let touchStartY = 0;
+            
+            const onTouchStart = (e) => {
+                touchStartX = e.touches[0].clientX;
+                touchStartY = e.touches[0].clientY;
+            };
+            const onTouchMove = (e) => {};
+            const onTouchEnd = (e) => {
+                const diffX = e.changedTouches[0].clientX - touchStartX;
+                const diffY = e.changedTouches[0].clientY - touchStartY;
+                if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 40) {
+                    if (diffX > 0 && currentPage.value > 0) {
+                        currentPage.value--;
+                    } else if (diffX < 0 && currentPage.value < 1) {
+                        currentPage.value++;
+                    }
+                }
+            };
+
             // 一机一码激活逻辑
             const isActivated = ref(localStorage.getItem('sys_activated') === 'true');
             const isAdminSession = ref(localStorage.getItem('sys_is_admin') === 'true');
@@ -858,7 +1137,11 @@
                 { id: 'map', defaultLabel: '地图' },
                 { id: 'settings', defaultLabel: '设置' },
                 { id: 'appearance', defaultLabel: '外观' },
-                { id: 'admin', defaultLabel: '生成激活码' }
+                { id: 'admin', defaultLabel: '生成激活码' },
+                { id: 'shouna', defaultLabel: '收纳助手' },
+                { id: 'beidanci', defaultLabel: '对对碰背单词' },
+                { id: 'character', defaultLabel: '角色卡' },
+                { id: 'worldview', defaultLabel: '世界观' }
             ];
 
             const defaultAppearance = {
@@ -876,17 +1159,37 @@
                     map: { icon: '', label: '' },
                     settings: { icon: '', label: '' },
                     appearance: { icon: '', label: '' },
-                    admin: { icon: '', label: '' }
+                    admin: { icon: '', label: '' },
+                    shouna: { icon: '', label: '' },
+                    beidanci: { icon: '', label: '' },
+                    character: { icon: '', label: '' },
+                    worldview: { icon: '', label: '' }
                 }
             };
 
             const localAppConfig = localStorage.getItem('sys_appearance_config');
             const parsedConfig = localAppConfig ? JSON.parse(localAppConfig) : JSON.parse(JSON.stringify(defaultAppearance));
             
-            // 兜底校验
+            // 兜底校验并向后兼容补齐缺失的新 App 键值与旧待办 App 转换迁移
             if (!parsedConfig.verticalWidget) parsedConfig.verticalWidget = { bgImage: '' };
             if (!parsedConfig.squareWidget) parsedConfig.squareWidget = { bgImage: '', text: '' };
-            if (!parsedConfig.apps) parsedConfig.apps = JSON.parse(JSON.stringify(defaultAppearance.apps));
+            if (!parsedConfig.apps) {
+                parsedConfig.apps = JSON.parse(JSON.stringify(defaultAppearance.apps));
+            } else {
+                // 如果存在旧版本里的 placeholder 设定，迁移到新命名
+                if (parsedConfig.apps.placeholder1 && !parsedConfig.apps.character) {
+                    parsedConfig.apps.character = parsedConfig.apps.placeholder1;
+                }
+                if (parsedConfig.apps.placeholder2 && !parsedConfig.apps.worldview) {
+                    parsedConfig.apps.worldview = parsedConfig.apps.placeholder2;
+                }
+                const defaultApps = JSON.parse(JSON.stringify(defaultAppearance.apps));
+                Object.keys(defaultApps).forEach(key => {
+                    if (!parsedConfig.apps[key]) {
+                        parsedConfig.apps[key] = defaultApps[key];
+                    }
+                });
+            }
 
             const appearanceConfig = ref(parsedConfig);
             const tempAppearance = ref(JSON.parse(JSON.stringify(appearanceConfig.value)));
@@ -1032,7 +1335,7 @@
                 showIframeApp.value = false;
             };
 
-            // 页面跳转函数（微信聊天采用内置视图，其他 App 采用内置 iframe 渲染，保持悬浮球在所有页面置顶）
+            // 页面跳转函数
             const openChatPage = () => { openIframeApp('聊天.html'); };
             const openForumPage = () => { openIframeApp('论坛.html'); };
             const openShoppingPage = () => { openIframeApp('购物.html'); };
@@ -1041,6 +1344,9 @@
             const openNiudanPage = () => { openIframeApp('扭蛋机.html'); };
             const openChashoujiPage = () => { openIframeApp('查手机.html'); };
             const openMapPage = () => { openIframeApp('地图.html'); };
+            const openShounaPage = () => { openIframeApp('收纳助手.html'); };
+            const openBeidanciPage = () => { openIframeApp('对对碰背单词.html'); };
+            
             const backToHome = () => { 
                 currentView.value = 'home';
                 closeIframeApp();
@@ -1060,7 +1366,10 @@
                     'chat_friends',
                     'chat_history',
                     'chat_emojis',
-                    'chat_presets'
+                    'chat_presets',
+                    'local_character_cards',
+                    'wb_data',
+                    'chat_worldviews'
                 ];
                 const exportObj = {};
                 keys.forEach(key => {
@@ -1122,18 +1431,465 @@
             const openChat = (friend) => { activeFriend.value = friend; chatCurrentView.value = 'chat'; };
             const exitChat = () => { chatCurrentView.value = 'list'; };
 
+            // ===== 角色卡 APP 功能数据及逻辑 =====
+            const characterCards = ref(JSON.parse(localStorage.getItem('local_character_cards') || '[]'));
+            const showCharModal = ref(false);
+            const isUploadingChar = ref(false);
+            const charForm = ref({
+                id: null,
+                name: '',
+                avatar: '',
+                persona: '',
+                selectedWorldviewId: ''
+            });
+
+            const openCharacterApp = () => {
+                currentView.value = 'character-app';
+            };
+
+            const openCharForm = (char = null) => {
+                if (char) {
+                    charForm.value = {
+                        id: char.id,
+                        name: char.name,
+                        avatar: char.avatar,
+                        persona: char.persona,
+                        selectedWorldviewId: char.selectedWorldviewId || ''
+                    };
+                } else {
+                    charForm.value = {
+                        id: null,
+                        name: '',
+                        avatar: '',
+                        persona: '',
+                        selectedWorldviewId: ''
+                    };
+                }
+                showCharModal.value = true;
+            };
+
+            const handleCharAvatarUpload = async (event) => {
+                const file = event.target.files[0];
+                if (file) {
+                    try {
+                        charForm.value.avatar = await convertFileToBase64(file);
+                    } catch (err) {
+                        alert('图片读取失败');
+                    }
+                }
+            };
+
+            const saveCharacterCard = async () => {
+                if (!charForm.value.name.trim() || !charForm.value.persona.trim()) {
+                    alert('名称和人设设定均不能为空！');
+                    return;
+                }
+                isUploadingChar.value = true;
+
+                const cardId = charForm.value.id || Date.now();
+                const newCard = {
+                    id: cardId,
+                    name: charForm.value.name.trim(),
+                    avatar: charForm.value.avatar.trim() || charForm.value.name.trim()[0],
+                    persona: charForm.value.persona.trim(),
+                    selectedWorldviewId: charForm.value.selectedWorldviewId
+                };
+
+                // 1. 保存到本地角色卡列表
+                const existingIdx = characterCards.value.findIndex(c => c.id === cardId);
+                if (existingIdx > -1) {
+                    characterCards.value[existingIdx] = newCard;
+                } else {
+                    characterCards.value.push(newCard);
+                }
+                localStorage.setItem('local_character_cards', JSON.stringify(characterCards.value));
+
+                // 2. 同步到聊天 App 角色大厅 (通过 KVDB 云端 API)
+                try {
+                    let currentList = [];
+                    const res = await fetch(`https://kvdb.io/c8f1a3e5b7c94d0b8f2a1/all_chars`);
+                    if (res.ok) {
+                        currentList = await res.json();
+                    }
+                    const kvIdx = currentList.findIndex(c => c.name === newCard.name);
+                    const kvCard = {
+                        id: newCard.id,
+                        name: newCard.name,
+                        avatar: newCard.avatar,
+                        persona: newCard.persona
+                    };
+                    if (kvIdx > -1) {
+                        currentList[kvIdx] = kvCard;
+                    } else {
+                        currentList.push(kvCard);
+                    }
+                    await fetch(`https://kvdb.io/c8f1a3e5b7c94d0b8f2a1/all_chars`, {
+                        method: 'POST',
+                        body: JSON.stringify(currentList)
+                    });
+                    alert('角色卡保存成功，并同步至聊天大厅！');
+                } catch (err) {
+                    console.error(err);
+                    alert('保存成功，但云端大厅同步失败，请检查网络！');
+                } finally {
+                    isUploadingChar.value = false;
+                    showCharModal.value = false;
+                }
+            };
+
+            const deleteCharacterCard = (id) => {
+                if (confirm('确定要删除此角色卡吗？')) {
+                    characterCards.value = characterCards.value.filter(c => c.id !== id);
+                    localStorage.setItem('local_character_cards', JSON.stringify(characterCards.value));
+                }
+            };
+
+            const availableWorldviews = computed(() => {
+                return JSON.parse(localStorage.getItem('chat_worldviews') || '[]');
+            });
+
+            const getWorldviewName = (wvId) => {
+                const wvs = availableWorldviews.value;
+                const found = wvs.find(w => w.id == wvId);
+                return found ? found.name : '';
+            };
+
+            // 监听并执行默认关联世界观的功能，如果 chat_friends 里新添了角色，自动给其赋予设置好的关联世界观
+            setInterval(() => {
+                try {
+                    const chatFriendsStr = localStorage.getItem('chat_friends');
+                    if (chatFriendsStr) {
+                        let chatFriends = JSON.parse(chatFriendsStr);
+                        let updated = false;
+                        const localCards = JSON.parse(localStorage.getItem('local_character_cards') || '[]');
+                        
+                        chatFriends.forEach(friend => {
+                            if (friend.selectedWorldviewId === undefined || friend.selectedWorldviewId === null || friend.selectedWorldviewId === '') {
+                                const matchedCard = localCards.find(c => c.name === friend.name);
+                                if (matchedCard && matchedCard.selectedWorldviewId) {
+                                    friend.selectedWorldviewId = matchedCard.selectedWorldviewId;
+                                    updated = true;
+                                }
+                            }
+                        });
+
+                        if (updated) {
+                            localStorage.setItem('chat_friends', JSON.stringify(chatFriends));
+                        }
+                    }
+                } catch (e) {
+                    // 容错忽略
+                }
+            }, 1000);
+
+
+            // ===== 世界书 (世界观) APP 功能数据及逻辑 =====
+            const savedWb = localStorage.getItem('wb_data');
+            const parsedWb = savedWb ? JSON.parse(savedWb) : { groups: ["默认分组"], books: [] };
+            parsedWb.books.forEach(b => {
+                if (!b.id) b.id = Date.now() + Math.random();
+            });
+            const wbData = ref(parsedWb);
+            
+            const currentWbTab = ref('global');
+            const wbSearchInput = ref('');
+            const showWbModal = ref(false);
+            const collapsedGroups = ref([]);
+            const showHtmlPreview = ref(false);
+            const htmlPreviewFrame = ref(null);
+            
+            const wbForm = ref({
+                id: null,
+                title: '',
+                content: '',
+                group: '默认分组',
+                mode: 'global',
+                keyword: '',
+                scope: 'global'
+            });
+
+            const openWorldviewApp = () => {
+                currentView.value = 'worldview-app';
+            };
+
+            const filteredWbBooks = computed(() => {
+                const query = wbSearchInput.value.toLowerCase().trim();
+                return wbData.value.books.filter(b => {
+                    const matchScope = (b.scope === currentWbTab.value) || (!b.scope && currentWbTab.value === 'local');
+                    const matchQuery = b.title.toLowerCase().includes(query) || b.content.toLowerCase().includes(query);
+                    return matchScope && matchQuery;
+                });
+            });
+
+            const hasGroupBooks = (group) => {
+                return filteredWbBooks.value.some(b => b.group === group);
+            };
+
+            const getGroupBooks = (group) => {
+                return filteredWbBooks.value.filter(b => b.group === group);
+            };
+
+            const getGroupBooksCount = (group) => {
+                return getGroupBooks(group).length;
+            };
+
+            const toggleWbGroup = (group) => {
+                const idx = collapsedGroups.value.indexOf(group);
+                if (idx > -1) {
+                    collapsedGroups.value.splice(idx, 1);
+                } else {
+                    collapsedGroups.value.push(group);
+                }
+            };
+
+            const openWbModal = (book = null) => {
+                if (book) {
+                    wbForm.value = {
+                        id: book.id,
+                        title: book.title,
+                        content: book.content,
+                        group: book.group,
+                        mode: book.mode || 'global',
+                        keyword: book.keyword || '',
+                        scope: book.scope || currentWbTab.value
+                    };
+                } else {
+                    wbForm.value = {
+                        id: null,
+                        title: '',
+                        content: '',
+                        group: wbData.value.groups[0] || '默认分组',
+                        mode: 'global',
+                        keyword: '',
+                        scope: currentWbTab.value
+                    };
+                }
+                showWbModal.value = true;
+            };
+
+            const saveWbBook = () => {
+                if (!wbForm.value.title.trim()) return alert('请输入名称');
+                if (wbForm.value.mode === 'keyword' && !wbForm.value.keyword.trim()) return alert('请输入关键词');
+
+                const bookId = wbForm.value.id || Date.now();
+                const bookData = {
+                    id: bookId,
+                    title: wbForm.value.title.trim(),
+                    content: wbForm.value.content.trim(),
+                    group: wbForm.value.group,
+                    mode: wbForm.value.mode,
+                    keyword: wbForm.value.mode === 'keyword' ? wbForm.value.keyword.trim() : null,
+                    scope: wbForm.value.scope || currentWbTab.value
+                };
+
+                const existingIdx = wbData.value.books.findIndex(b => b.id === bookId);
+                if (existingIdx > -1) {
+                    wbData.value.books[existingIdx] = bookData;
+                } else {
+                    wbData.value.books.push(bookData);
+                }
+
+                localStorage.setItem('wb_data', JSON.stringify(wbData.value));
+                syncWbToChatWorldviews();
+                showWbModal.value = false;
+                alert('设定保存成功，已同步到聊天App设定库中！');
+            };
+
+            const deleteWbBook = () => {
+                if (!wbForm.value.id) return;
+                if (confirm('确定要删除此设定吗？')) {
+                    wbData.value.books = wbData.value.books.filter(b => b.id !== wbForm.value.id);
+                    localStorage.setItem('wb_data', JSON.stringify(wbData.value));
+                    syncWbToChatWorldviews();
+                    showWbModal.value = false;
+                    alert('设定已删除');
+                }
+            };
+
+            const addNewWbGroup = () => {
+                const name = prompt('请输入新分组名称:');
+                if (name && !wbData.value.groups.includes(name)) {
+                    wbData.value.groups.push(name);
+                    wbForm.value.group = name;
+                }
+            };
+
+            const syncWbToChatWorldviews = () => {
+                const chatWvs = wbData.value.books.map(b => ({
+                    id: b.id,
+                    name: b.title,
+                    content: b.content
+                }));
+                localStorage.setItem('chat_worldviews', JSON.stringify(chatWvs));
+            };
+
+            // 动态导入 Mammoth 依赖库并解析 .docx 文件
+            const loadWbMammothLibrary = () => {
+                return new Promise((resolve, reject) => {
+                    if (typeof mammoth !== 'undefined') {
+                        resolve();
+                        return;
+                    }
+                    const script = document.createElement('script');
+                    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.2/mammoth.browser.min.js';
+                    script.onload = () => resolve();
+                    script.onerror = () => reject(new Error('Mammoth 库加载失败'));
+                    document.head.appendChild(script);
+                });
+            };
+
+            const handleWbImport = async (event) => {
+                const file = event.target.files[0];
+                if (!file) return;
+                const fileName = file.name.toLowerCase();
+                try {
+                    let textContent = '';
+                    if (fileName.endsWith('.txt')) {
+                        textContent = await new Promise((resolve, reject) => {
+                            const reader = new FileReader();
+                            reader.onload = (e) => resolve(e.target.result);
+                            reader.onerror = () => reject(new Error('文件读取失败'));
+                            reader.readAsText(file, 'UTF-8');
+                        });
+                    } else if (fileName.endsWith('.docx')) {
+                        await loadWbMammothLibrary();
+                        textContent = await new Promise((resolve, reject) => {
+                            const reader = new FileReader();
+                            reader.onload = async (e) => {
+                                try {
+                                    const result = await mammoth.extractRawText({ arrayBuffer: e.target.result });
+                                    resolve(result.value);
+                                } catch (err) {
+                                    reject(err);
+                                }
+                            };
+                            reader.readAsArrayBuffer(file);
+                        });
+                    } else {
+                        return alert('仅支持 .txt 和 .docx 文件导入');
+                    }
+                    if (wbForm.value.content) {
+                        wbForm.value.content += '\n\n' + textContent;
+                    } else {
+                        wbForm.value.content = textContent;
+                    }
+                    alert('导入成功，请检查！');
+                } catch (err) {
+                    alert('解析失败: ' + err.message);
+                }
+                event.target.value = '';
+            };
+
+            const previewHtml = () => {
+                if (!wbForm.value.content.trim()) return alert('内容为空，无法预览');
+                showHtmlPreview.value = true;
+                nextTick(() => {
+                    const frame = htmlPreviewFrame.value;
+                    if (frame) {
+                        const doc = frame.contentDocument || frame.contentWindow.document;
+                        doc.open();
+                        doc.write(wbForm.value.content);
+                        doc.close();
+                    }
+                });
+            };
+
+            // API 接口功能方法实现（补齐缺失逻辑）
+            const fetchModels = async () => {
+                if (!apiConfig.value.endpoint || !apiConfig.value.apiKey) {
+                    return alert('请先填写 Endpoint 和 API Key！');
+                }
+                try {
+                    let cleanBaseUrl = apiConfig.value.endpoint.trim().replace(/\/$/, "");
+                    if (cleanBaseUrl.endsWith("/chat/completions")) {
+                        cleanBaseUrl = cleanBaseUrl.replace(/\/chat\/completions$/, "");
+                    }
+                    const res = await fetch(`${cleanBaseUrl}/models`, {
+                        headers: { 'Authorization': `Bearer ${apiConfig.value.apiKey.trim()}` }
+                    });
+                    if (res.ok) {
+                        const data = await res.json();
+                        models.value = data.data.map(m => m.id);
+                        alert('拉取成功！请在下拉框选择模型');
+                    } else {
+                        alert('获取模型失败，请检查 Endpoint 或密钥！');
+                    }
+                } catch (e) {
+                    alert('接口拉取模型超时或连接错误，请检查网络！');
+                }
+            };
+
+            const savePreset = () => {
+                const name = prompt("请输入预设名称：");
+                if (name) {
+                    presets.value.push({
+                        endpoint: apiConfig.value.endpoint,
+                        apiKey: apiConfig.value.apiKey,
+                        selectedModel: apiConfig.value.selectedModel,
+                        name
+                    });
+                    localStorage.setItem('chat_presets', JSON.stringify(presets.value));
+                    alert('预设保存成功！');
+                }
+            };
+
+            const loadPreset = (p) => {
+                apiConfig.value = { ...p };
+                localStorage.setItem('global_api_endpoint', p.endpoint);
+                localStorage.setItem('global_api_key', p.apiKey);
+                localStorage.setItem('global_api_model', p.selectedModel);
+                alert(`已加载预设: ${p.name}`);
+            };
+
+            const deletePreset = (index) => {
+                if (confirm('确认删除此快捷预设吗？')) {
+                    presets.value.splice(index, 1);
+                    localStorage.setItem('chat_presets', JSON.stringify(presets.value));
+                }
+            };
+
+            const handleNotificationChange = () => {
+                if (bgNotification.value) {
+                    if ('Notification' in window) {
+                        Notification.requestPermission().then(permission => {
+                            if (permission !== 'granted') {
+                                alert('通知权限被拒绝，请先在手机系统设置里允许该浏览器发送系统通知权限！');
+                                bgNotification.value = false;
+                            }
+                        });
+                    }
+                }
+            };
+
+            const deleteSelectedEmojis = () => {
+                if (confirm('确定要删除选中的表情吗？')) {
+                    emojis.value = emojis.value.filter(e => !e.selected);
+                    localStorage.setItem('chat_emojis', JSON.stringify(emojis.value));
+                }
+            };
+
             return {
                 appearanceConfig, tempAppearance, editableApps, getAppIcon, getAppLabel, handleLocalBgUpload,
                 handleLocalWidgetUpload, handleLocalAppIconUpload, resetAppConfig, saveAppearanceConfig,
                 isActivated, isAdminSession, activationCodeInput, showAdminLoginModal, adminPasswordInput,
                 generatedCode, deviceId, targetDeviceIdInput, verifyActivationCode, loginAsAdmin, generateNewCode,
-                bgKeepAlive, bgNotification, currentView, currentTime, currentDate, apiConfig, saveHomeConfig,
+                bgKeepAlive, bgNotification, handleNotificationChange, currentView, currentTime, currentDate, apiConfig, saveHomeConfig,
                 openChatPage, openForumPage, openShoppingPage, openXhsPage, openZilvPage, openNiudanPage,
-                openChashoujiPage, openMapPage, backToHome,
+                openChashoujiPage, openMapPage, openShounaPage, openBeidanciPage, openCharacterApp, openWorldviewApp, backToHome,
                 exportData, importData,
                 activeTab, chatCurrentView, activeFriend, activeTabName, friends, chatHistory, emojis, presets, models,
                 userInput, showEmojiPanel, showMsgMenu, switchTab, openChat, exitChat,
-                showIframeApp, currentIframeUrl
+                showIframeApp, currentIframeUrl,
+                currentPage, onTouchStart, onTouchMove, onTouchEnd,
+
+                // 导出角色卡App
+                characterCards, charForm, showCharModal, isUploadingChar, openCharForm, handleCharAvatarUpload, saveCharacterCard, deleteCharacterCard, availableWorldviews, getWorldviewName,
+                
+                // 导出世界观(世界书)App
+                wbData, currentWbTab, wbSearchInput, showWbModal, wbForm, collapsedGroups, showHtmlPreview, htmlPreviewFrame, filteredWbBooks, hasGroupBooks, getGroupBooks, getGroupBooksCount, toggleWbGroup, openWbModal, saveWbBook, deleteWbBook, addNewWbGroup, handleWbImport, previewHtml,
+                
+                // API功能补齐导出
+                fetchModels, savePreset, loadPreset, deletePreset, deleteSelectedEmojis
             };
         }
     }).mount('#app');
