@@ -10,7 +10,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="客单小手机" />
     
-    <!-- 引入刚刚创建的 manifest.json 配置文件，实现 Edge/Chrome 浏览器添加到手机全屏 -->
+    <!-- 引入刚刚创建 the manifest.json 配置文件，实现 Edge/Chrome 浏览器添加到手机全屏 -->
     <link rel="manifest" href="manifest.json" />
     
     <title>客单小手机</title>
@@ -820,6 +820,12 @@
             </div>
         </div>
     </div>
+
+    <!-- App iframe 挂载容器 (挂载在 index.html 内部以解决跨页面悬浮球无法显示的痛点) -->
+    <div v-show="showIframeApp" class="fixed inset-0 z-40 bg-black flex flex-col">
+        <iframe :src="currentIframeUrl" class="w-full h-full border-none"></iframe>
+    </div>
+
     <!-- 悬浮返回球 -->
     <div id="floating-ball" @click="backToHome"></div>
 </div>
@@ -1012,16 +1018,33 @@
                 currentView.value = 'home';
             };
 
-            // 页面跳转函数
-            const openChatPage = () => { window.location.href = '聊天.html'; };
-            const openForumPage = () => { window.location.href = '论坛.html'; };
-            const openShoppingPage = () => { window.location.href = '购物.html'; };
-            const openXhsPage = () => { window.location.href = '小红书.html'; };
-            const openZilvPage = () => { window.location.href = '自律.html'; };
-            const openNiudanPage = () => { window.location.href = '扭蛋机.html'; };
-            const openChashoujiPage = () => { window.location.href = '查手机.html'; };
-            const openMapPage = () => { window.location.href = '地图.html'; };
-            const backToHome = () => { currentView.value = 'home'; };
+            // App iframe 控制与退出
+            const showIframeApp = ref(false);
+            const currentIframeUrl = ref('');
+
+            const openIframeApp = (url) => {
+                currentIframeUrl.value = url;
+                showIframeApp.value = true;
+            };
+
+            const closeIframeApp = () => {
+                currentIframeUrl.value = '';
+                showIframeApp.value = false;
+            };
+
+            // 页面跳转函数（微信聊天采用内置视图，其他 App 采用内置 iframe 渲染，保持悬浮球在所有页面置顶）
+            const openChatPage = () => { currentView.value = 'chat'; };
+            const openForumPage = () => { openIframeApp('论坛.html'); };
+            const openShoppingPage = () => { openIframeApp('购物.html'); };
+            const openXhsPage = () => { openIframeApp('小红书.html'); };
+            const openZilvPage = () => { openIframeApp('自律.html'); };
+            const openNiudanPage = () => { openIframeApp('扭蛋机.html'); };
+            const openChashoujiPage = () => { openIframeApp('查手机.html'); };
+            const openMapPage = () => { openIframeApp('地图.html'); };
+            const backToHome = () => { 
+                currentView.value = 'home';
+                closeIframeApp();
+            };
 
             // 导出数据函数
             const exportData = () => {
@@ -1109,7 +1132,8 @@
                 openChashoujiPage, openMapPage, backToHome,
                 exportData, importData,
                 activeTab, chatCurrentView, activeFriend, activeTabName, friends, chatHistory, emojis, presets, models,
-                userInput, showEmojiPanel, showMsgMenu, switchTab, openChat, exitChat
+                userInput, showEmojiPanel, showMsgMenu, switchTab, openChat, exitChat,
+                showIframeApp, currentIframeUrl
             };
         }
     }).mount('#app');
