@@ -1516,7 +1516,7 @@
         <video ref="theaterVideoPlayer" v-show="theaterSource === 'local' || (theaterSource === 'online' && selectedOnlineType === 'link')" class="w-full h-full" controls playsinline></video>
         
         <!-- B站专用播放器容器 -->
-        <iframe ref="theaterBiliPlayer" v-show="theaterSource === 'online' && selectedOnlineType === 'bili'" class="w-full h-full border-none absolute inset-0 z-[1]" allowfullscreen="true" sandbox="allow-forms allow-scripts allow-same-origin allow-popups allow-storage-access-by-user-activation allow-top-navigation-by-user-activation"></iframe>
+        <iframe ref="theaterBiliPlayer" v-show="theaterSource === 'online' && selectedOnlineType === 'bili'" class="w-full h-full border-none absolute inset-0 z-[1]" allowfullscreen="true" referrerpolicy="no-referrer"></iframe>
         
         <!-- 退出按钮 -->
         <div class="absolute top-5 left-5 text-white text-2xl drop-shadow-md cursor-pointer z-[10006]" @click="exitTheater">✕</div>
@@ -3912,6 +3912,10 @@ const sendPetMsg = async () => {
 
     showPetChat.value = false;
     const fId = activeFriend.value.id;
+    
+    // 记录发送前历史记录的长度，用于准确定位本次AI回复的所有新气泡
+    const startIndex = chatHistory.value[fId].length;
+
     chatHistory.value[fId].push({ role: 'user', type: 'text', content: val });
     petInput.value = '';
 
@@ -3920,11 +3924,23 @@ const sendPetMsg = async () => {
     // 调用AI生成
     await getAIResponse();
     
-    // 从最新消息历史回显最新AI的吐槽
-    const history = chatHistory.value[fId];
-    const aiMsgs = history.filter(m => m.role === 'assistant');
-    if (aiMsgs.length > 0) {
-        petBubbleText.value = aiMsgs[aiMsgs.length - 1].content;
+    // 获取本次对话生成的所有AI回复气泡
+    const newHistory = chatHistory.value[fId].slice(startIndex + 1);
+    const aiMsgs = newHistory.filter(m => m.role === 'assistant');
+
+    // 依次显示每一句AI回复，看完后消失再显示下一句
+    for (let i = 0; i < aiMsgs.length; i++) {
+        petBubbleText.value = aiMsgs[i].content;
+        
+        // 根据每句话的字数动态计算阅读时间（每个字约200毫秒，最少看2秒，最多看6秒）
+        const readTime = Math.min(6000, Math.max(2000, aiMsgs[i].content.length * 200));
+        await new Promise(resolve => setTimeout(resolve, readTime));
+        
+        // 最后一句话看完后可以保留显示，非最后一句则清空并稍作停顿再显示下一句
+        if (i < aiMsgs.length - 1) {
+            petBubbleText.value = "";
+            await new Promise(resolve => setTimeout(resolve, 400)); // 停顿400毫秒再放下一句
+        }
     }
 };
 
@@ -4018,7 +4034,10 @@ return {
                     favorites, quotedText, openFavorites, deleteFavorite, favoriteSingleMsg, quoteMsg, clearQuote,
 
                     // User 面具管理导出
-                    userPersonas, showUserPersonaModal, userPersonaForm, addUserPersona, editUserPersona, saveUserPersona, deleteUserPersona
+                    userPersonas, showUserPersonaModal, userPersonaForm, addUserPersona, editUserPersona, saveUserPersona, deleteUserPersona,
+
+                    // 导出刮刮乐相关的变量与函数
+                    openLottery, buyLottery, scratchLottery, activeLottery
                 };
             }
         }).mount('#app');
